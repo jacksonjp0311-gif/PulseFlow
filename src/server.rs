@@ -33,8 +33,8 @@ const WEB_MANIFEST: &str = r##"{
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#f4f3f0",
-  "theme_color": "#008f4c",
+  "background_color": "#0a0a0a",
+  "theme_color": "#0a0a0a",
   "icons": [
     {"src":"/assets/icons/pulseflow-governor-192.png","sizes":"192x192","type":"image/png"},
     {"src":"/assets/icons/pulseflow-governor-512.png","sizes":"512x512","type":"image/png"}

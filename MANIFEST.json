@@ -395,7 +395,7 @@
                   {
                       "path":  "src/server.rs",
                       "bytes":  52768,
-                      "sha256":  "1a61db661374fdfc24ae3d690da990a6ef49c855e648d0054f59344c2db3264b"
+                      "sha256":  "214e578149bd245d62fd44b559c5c730070f79a7dfa2a86d1cd0dc3db2c564a3"
                   },
                   {
                       "path":  "src/storage.rs",
@@ -459,8 +459,8 @@
                   },
                   {
                       "path":  "web/index.html",
-                      "bytes":  149198,
-                      "sha256":  "6aaf6f6a5cefdf5a4d364b4a3395c16938cb5682ff577357702262e469499c12"
+                      "bytes":  161955,
+                      "sha256":  "a2aeef2d3d3c16be84b2b84819e4dccb384e0a62d03ae013ca870ace0ecc65e4"
                   }
               ]
 }
