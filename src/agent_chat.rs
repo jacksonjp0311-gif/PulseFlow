@@ -154,6 +154,14 @@ pub fn catalog() -> Vec<ProviderSpec> {
             notes: "Multi-model router.".into(),
         },
         ProviderSpec {
+            id: "nemotron_free".into(),
+            label: "NVIDIA Nemotron Ultra 550B (free)".into(),
+            base_url: "https://openrouter.ai/api/v1".into(),
+            default_model: "nvidia/nemotron-3-ultra-550b-a55b:free".into(),
+            env_hint: "OPENROUTER_API_KEY".into(),
+            notes: "OpenRouter free tier · nvidia/nemotron-3-ultra-550b-a55b:free".into(),
+        },
+        ProviderSpec {
             id: "anthropic".into(),
             label: "Anthropic (OpenAI-compat bridge)".into(),
             base_url: "https://api.anthropic.com/v1".into(),
@@ -251,7 +259,7 @@ fn resolve_key(provider: &str, secrets: &AgentSecrets) -> Option<String> {
     let env_names: &[&str] = match provider {
         "spacexai" => &["XAI_API_KEY", "SPACEXAI_API_KEY"],
         "openai" => &["OPENAI_API_KEY"],
-        "openrouter" => &["OPENROUTER_API_KEY"],
+        "openrouter" | "nemotron_free" => &["OPENROUTER_API_KEY"],
         "anthropic" => &["ANTHROPIC_API_KEY"],
         "groq" => &["GROQ_API_KEY"],
         "deepseek" => &["DEEPSEEK_API_KEY"],
@@ -259,6 +267,15 @@ fn resolve_key(provider: &str, secrets: &AgentSecrets) -> Option<String> {
         "custom" => &["CUSTOM_API_KEY", "OPENAI_API_KEY"],
         _ => &[],
     };
+    // Nemotron free rides OpenRouter keys — fall back to a saved openrouter key.
+    if provider == "nemotron_free" {
+        if let Some(k) = secrets.keys.get("openrouter") {
+            let t = k.trim();
+            if !t.is_empty() {
+                return Some(t.to_string());
+            }
+        }
+    }
     for name in env_names {
         if let Ok(v) = std::env::var(name) {
             let t = v.trim();
@@ -370,6 +387,15 @@ pub fn apply_config_patch(patch: AgentConfigPatch) -> Result<Value, String> {
             secrets.keys.remove(&key_provider);
         } else {
             secrets.keys.insert(key_provider.clone(), t.to_string());
+            // Share OpenRouter credentials with the free Nemotron preset.
+            if key_provider == "nemotron_free" || key_provider == "openrouter" {
+                secrets
+                    .keys
+                    .insert("openrouter".into(), t.to_string());
+                secrets
+                    .keys
+                    .insert("nemotron_free".into(), t.to_string());
+            }
         }
     }
     if let Some(model) = patch.active_model {

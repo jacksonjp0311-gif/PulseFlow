@@ -162,6 +162,33 @@
       letter-spacing: .02em;
       text-transform: none;
     }
+    .agent-key-row {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 5px;
+      align-items: stretch;
+    }
+    .agent-key-row input {
+      font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+      font-size: 13px;
+      padding: 8px 10px;
+      letter-spacing: .04em;
+    }
+    .agent-key-row .btn {
+      padding: 6px 10px;
+      font-size: 11px;
+      letter-spacing: .08em;
+      white-space: nowrap;
+    }
+    .agent-key-hint {
+      margin-top: 3px;
+      font-size: 10px;
+      letter-spacing: .06em;
+      text-transform: none;
+      color: var(--muted);
+      line-height: 1.35;
+    }
+    .agent-key-hint a { color: var(--accent); }
     .agent-settings-actions { grid-column: 1 / -1; display: flex; gap: 6px; flex-wrap: wrap; }
     .agent-settings-actions .btn { padding: 5px 8px; font-size: 11px; letter-spacing: .08em; }
     .agent-chat-log {
@@ -890,18 +917,23 @@
               <input id="agent-model" type="text" placeholder="model id" autocomplete="off" spellcheck="false">
             </label>
             <label class="wide">API key
-              <input id="agent-api-key" type="password" placeholder="paste key · saved locally" autocomplete="off" spellcheck="false">
+              <div class="agent-key-row">
+                <input id="agent-api-key" type="password" placeholder="Paste API key here, then Save key" autocomplete="off" spellcheck="false">
+                <button class="btn" type="button" id="agent-key-toggle" title="Show or hide key">Show</button>
+                <button class="btn primary" type="button" data-action="agent-save-key" title="Save key for this provider">Save key</button>
+              </div>
+              <div class="agent-key-hint" id="agent-key-hint">Keys stay on this machine. OpenRouter free models need an OPENROUTER_API_KEY.</div>
             </label>
             <label class="wide">Base URL (optional override)
-              <input id="agent-base-url" type="text" placeholder="https://api.x.ai/v1" autocomplete="off" spellcheck="false">
+              <input id="agent-base-url" type="text" placeholder="https://openrouter.ai/api/v1" autocomplete="off" spellcheck="false">
             </label>
             <div class="agent-settings-actions">
-              <button class="btn" data-action="agent-save-config" type="button">Save settings</button>
+              <button class="btn" data-action="agent-save-config" type="button">Save all settings</button>
               <button class="btn" data-action="agent-clear" type="button">Clear chat</button>
             </div>
           </div>
           <div class="agent-chat-log" id="agent-chat-log" aria-live="polite">
-            <div class="agent-bubble system">Cortex agent is interlinked with O-plane, sessions, Futurist memory, Pulse Mesh, and ARIA. Save a provider key, then ask about plant state, rehydrate, or enable mesh.</div>
+            <div class="agent-bubble system">Cortex agent is interlinked with O-plane, sessions, Futurist memory, Pulse Mesh, and ARIA. Pick NVIDIA Nemotron Ultra 550B (free) + paste your OpenRouter key, or use SpaceXAI/Grok / OpenAI.</div>
           </div>
           <div class="agent-compose">
             <textarea id="agent-chat-input" rows="2" placeholder="Ask the cortex… e.g. rehydrate and summarize pressure"></textarea>
@@ -1263,7 +1295,8 @@
     "logs-refresh": loadPersistentEvents,
     "agent-send": sendAgentChat,
     "agent-clear": clearAgentChat,
-    "agent-save-config": saveAgentConfig
+    "agent-save-config": saveAgentConfig,
+    "agent-save-key": saveAgentKey
   };
 
   function computeOscillationDamping() {
@@ -2335,6 +2368,36 @@
     setText("#agent-status-line", text);
   }
 
+  function providerKeyHint(provider) {
+    if (!provider) return "Keys stay on this machine under state/agent-secrets.json.";
+    if (provider.id === "nemotron_free" || provider.id === "openrouter") {
+      return `OpenRouter key · model ${provider.default_model || "…"} · get free key at openrouter.ai/keys · env ${provider.env_hint}`;
+    }
+    if (provider.id === "spacexai") {
+      return `xAI / SpaceXAI key · console.x.ai · env ${provider.env_hint}`;
+    }
+    if (provider.id === "ollama") {
+      return "Local Ollama — key optional (uses ollama). Ensure ollama serve is running.";
+    }
+    return `Paste ${provider.env_hint || "API key"} · saved only on this host. ${provider.notes || ""}`;
+  }
+
+  function applyProviderFields(provider, cfg) {
+    if (!provider) return;
+    if ($("#agent-model")) {
+      const modelOverride = cfg && cfg.active_provider === provider.id ? cfg.active_model : "";
+      $("#agent-model").value = modelOverride || provider.default_model || "";
+    }
+    if ($("#agent-base-url")) $("#agent-base-url").value = provider.base_url || "";
+    if ($("#agent-api-key")) {
+      $("#agent-api-key").placeholder = provider.has_key
+        ? `Key saved (${provider.key_preview || "••••"}) — paste to replace`
+        : `Paste ${provider.env_hint || "API key"} here`;
+    }
+    const hint = $("#agent-key-hint");
+    if (hint) hint.textContent = providerKeyHint(provider);
+  }
+
   async function loadAgentConfig() {
     const cfg = await api("/api/agent/config");
     App.agentConfig = cfg;
@@ -2345,32 +2408,24 @@
       (cfg.providers || []).forEach(provider => {
         const option = document.createElement("option");
         option.value = provider.id;
-        option.textContent = `${provider.label}${provider.has_key ? " · key" : ""}`;
+        const free = provider.id === "nemotron_free" ? " · FREE" : "";
+        option.textContent = `${provider.label}${free}${provider.has_key ? " · key ok" : ""}`;
         select.appendChild(option);
       });
       select.value = cfg.active_provider || previous || "spacexai";
       if (!select.value && select.options.length) select.selectedIndex = 0;
       select.onchange = () => {
-        const provider = (cfg.providers || []).find(item => item.id === select.value);
-        if (provider) {
-          $("#agent-model").value = provider.default_model || "";
-          $("#agent-base-url").value = provider.base_url || "";
-          $("#agent-api-key").placeholder = provider.has_key
-            ? `saved ${provider.key_preview || "••••"} · paste to replace`
-            : `paste key · env ${provider.env_hint || ""}`;
-        }
+        const provider = (cfg.providers || []).find(item => item.id === select.value)
+          || (App.agentConfig && App.agentConfig.providers || []).find(item => item.id === select.value);
+        applyProviderFields(provider, cfg);
         setAgentStatus(`Provider · ${select.value}`);
       };
     }
-    const active = (cfg.providers || []).find(item => item.id === cfg.active_provider) || (cfg.providers || [])[0];
-    if ($("#agent-model")) $("#agent-model").value = cfg.active_model || (active && active.default_model) || "";
-    if ($("#agent-base-url")) $("#agent-base-url").value = (active && active.base_url) || "";
-    if ($("#agent-api-key")) {
-      $("#agent-api-key").value = "";
-      $("#agent-api-key").placeholder = active && active.has_key
-        ? `saved ${active.key_preview || "••••"} · paste to replace`
-        : `paste key · env ${(active && active.env_hint) || "XAI_API_KEY"}`;
-    }
+    const active = (cfg.providers || []).find(item => item.id === (select && select.value || cfg.active_provider))
+      || (cfg.providers || []).find(item => item.id === cfg.active_provider)
+      || (cfg.providers || [])[0];
+    applyProviderFields(active, cfg);
+    if ($("#agent-api-key")) $("#agent-api-key").value = "";
     setText("#agent-link-state", active && active.has_key ? "KEYED" : "NEED KEY");
     setAgentStatus(`Provider · ${cfg.active_provider || "spacexai"} · ${(cfg.tools || []).length} tools`);
     return cfg;
@@ -2390,6 +2445,52 @@
     if ($("#agent-api-key")) $("#agent-api-key").value = "";
     await loadAgentConfig();
     toast("Cortex agent settings saved locally.");
+  }
+
+  async function saveAgentKey() {
+    const provider = ($("#agent-provider") && $("#agent-provider").value) || "spacexai";
+    const keyInput = $("#agent-api-key");
+    const key = keyInput ? keyInput.value.trim() : "";
+    if (!key) return toast("Paste an API key first.", true);
+    App.agentConfig = await api("/api/agent/config", {
+      method: "POST",
+      body: {
+        active_provider: provider,
+        provider,
+        api_key: key,
+        active_model: ($("#agent-model") && $("#agent-model").value) || "",
+        base_url: ($("#agent-base-url") && $("#agent-base-url").value) || ""
+      }
+    });
+    if (keyInput) keyInput.value = "";
+    await loadAgentConfig();
+    toast(`API key saved for ${provider}.`);
+  }
+
+  function bindAgentKeyUi() {
+    const toggle = $("#agent-key-toggle");
+    const keyInput = $("#agent-api-key");
+    if (toggle && keyInput) {
+      toggle.addEventListener("click", () => {
+        const show = keyInput.type === "password";
+        keyInput.type = show ? "text" : "password";
+        toggle.textContent = show ? "Hide" : "Show";
+      });
+      keyInput.addEventListener("paste", () => {
+        setTimeout(() => {
+          if (keyInput.value.trim().length > 8) {
+            setAgentStatus("Key pasted · click Save key");
+            setText("#agent-link-state", "PASTE");
+          }
+        }, 0);
+      });
+      keyInput.addEventListener("keydown", event => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          saveAgentKey().catch(error => toast(error.message, true));
+        }
+      });
+    }
   }
 
   async function clearAgentChat() {
@@ -2444,6 +2545,7 @@
 
   async function init() {
     bindControls();
+    bindAgentKeyUi();
     const chatInput = $("#agent-chat-input");
     if (chatInput) {
       chatInput.addEventListener("keydown", event => {

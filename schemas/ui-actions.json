@@ -246,6 +246,12 @@
       "kind": "http",
       "method": "POST",
       "route": "/api/agent/config"
+    },
+    {
+      "id": "agent-save-key",
+      "kind": "http",
+      "method": "POST",
+      "route": "/api/agent/config"
     }
   ],
   "tabs": [
