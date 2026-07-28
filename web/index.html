@@ -61,7 +61,7 @@
     .signal-bars i:nth-child(1) { height: 5px; }.signal-bars i:nth-child(2) { height: 9px; }.signal-bars i:nth-child(3) { height: 14px; }.signal-bars i:nth-child(4) { height: 19px; }
     .record-lamp { width: 34px; height: 34px; border: 1px solid var(--line); display: grid; place-items: center; }
     .record-lamp span { width: 10px; height: 10px; background: var(--accent); display: block; }
-    .nav { display: grid; grid-template-columns: repeat(8, minmax(90px, 1fr)); gap: 7px; }
+    .nav { display: grid; grid-template-columns: repeat(10, minmax(72px, 1fr)); gap: 7px; }
     .tab {
       min-height: 34px;
       border: 1px solid var(--line);
@@ -97,8 +97,32 @@
     .view.active { display: block; }
     .modulation-view { position: relative; height: 100%; background-image: linear-gradient(rgba(0,0,0,.025) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,.025) 1px, transparent 1px); background-size: 28px 28px; }
     .modulation-view::before { content: ""; position: absolute; inset: 5% 8%; border: 1px dashed #c9c5bd; border-radius: 50%; }
-    .status-block { position: absolute; z-index: 5; top: 13px; left: 16px; font-size: 10px; line-height: 1.55; letter-spacing: .07em; text-transform: uppercase; }
-    .clock-block { position: absolute; z-index: 5; top: 13px; right: 16px; text-align: right; font-size: 10px; line-height: 1.55; letter-spacing: .07em; text-transform: uppercase; }
+    .status-block { position: absolute; z-index: 5; top: 10px; left: 12px; font-size: 10px; line-height: 1.45; letter-spacing: .06em; text-transform: uppercase; width: min(272px, 36%); }
+    .clock-block { position: absolute; z-index: 5; top: 10px; right: 12px; text-align: right; font-size: 10px; line-height: 1.45; letter-spacing: .06em; text-transform: uppercase; width: min(272px, 36%); }
+    .hud-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4px 8px;
+      margin-top: 6px;
+      text-align: left;
+    }
+    .clock-block .hud-grid { text-align: right; }
+    .hud-chip {
+      border: 1px solid rgba(0,83,44,.14);
+      border-radius: 6px;
+      background: rgba(255,255,255,.55);
+      padding: 3px 5px;
+      min-width: 0;
+    }
+    .hud-chip span { display: block; font-size: 7px; letter-spacing: .1em; color: #6a675f; opacity: .95; }
+    .hud-chip b { display: block; font-size: 11px; letter-spacing: .04em; color: var(--ink); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .hud-chip.zone-adm b { color: #007a41; }
+    .hud-chip.zone-unc b { color: #a66a12; }
+    .hud-chip.zone-inv b { color: #a2371f; }
+    .hud-chip.regime b { color: #0b5cab; }
+    .hud-title-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 9px; letter-spacing: .1em; }
+    .hud-title-row strong { color: var(--accent); font-size: 10px; }
+    .coherence-scope-card { top: 118px !important; }
     .accent { color: var(--accent); font-weight: 700; }
     .core-wrap { position: absolute; inset: 75px 20px 35px; }
     .orbit { position: absolute; left: 50%; top: 51%; transform: translate(-50%, -50%); border: 1px solid #bdb9b1; border-radius: 50%; }
@@ -114,8 +138,87 @@
     .pulse-dot { position: absolute; width: 8px; height: 8px; border: 2px solid var(--accent); border-radius: 50%; background: var(--panel); animation: pulse 1.4s infinite ease-in-out; z-index: 4; }
     .pulse-dot.p1 { left: 50%; top: 35%; }.pulse-dot.p2 { left: 35%; top: 53%; animation-delay:.3s; }.pulse-dot.p3 { right: 35%; top: 53%; animation-delay:.6s; }.pulse-dot.p4 { left: 50%; bottom: 23%; animation-delay:.9s; }
     @keyframes pulse { 0%,100% { transform: scale(.7); opacity:.5; } 50% { transform: scale(1.5); opacity:1; } }
-    .core-caption { position: absolute; left: 16px; bottom: 14px; border: 1px solid var(--soft-line); background: rgba(250,249,246,.92); padding: 8px 11px; font-size: 9px; line-height: 1.7; text-transform: uppercase; letter-spacing: .07em; }
-    .stability-card { position: absolute; right: 16px; bottom: 14px; border: 1px solid var(--soft-line); background: rgba(250,249,246,.92); padding: 9px; width: 165px; font-size: 9px; text-transform: uppercase; letter-spacing: .08em; }
+    .core-caption { position: absolute; left: 16px; bottom: 148px; border: 1px solid var(--soft-line); background: rgba(250,249,246,.92); padding: 8px 11px; font-size: 9px; line-height: 1.7; text-transform: uppercase; letter-spacing: .07em; z-index: 6; }
+    .stability-card { position: absolute; right: 16px; bottom: 148px; border: 1px solid var(--soft-line); background: rgba(250,249,246,.92); padding: 9px; width: 165px; font-size: 9px; text-transform: uppercase; letter-spacing: .08em; z-index: 6; }
+    /* Corner oscillation + reverberation scopes (wavelength-locked) */
+    .wave-corner {
+      position: absolute; z-index: 7; width: min(248px, 34%);
+      border: 1px solid var(--pf-border, var(--soft-line));
+      border-radius: 12px;
+      background: rgba(255,255,255,.82);
+      box-shadow: 0 10px 28px rgba(12,43,27,.08);
+      backdrop-filter: blur(10px);
+      padding: 8px 10px 7px;
+      overflow: hidden;
+    }
+    .wave-corner::before {
+      content: "";
+      position: absolute; inset: 0;
+      background: radial-gradient(circle at 30% 40%, rgba(0,168,90,.14), transparent 62%),
+                  radial-gradient(circle at 80% 80%, rgba(210,120,40,.10), transparent 55%);
+      pointer-events: none;
+    }
+    .wave-corner.oscillation { left: 14px; bottom: 12px; }
+    .wave-corner.reverberation { right: 14px; bottom: 12px; }
+    .wave-corner .wave-head {
+      position: relative; z-index: 1;
+      display: flex; justify-content: space-between; align-items: baseline; gap: 8px;
+      font-size: 9px; letter-spacing: .12em; text-transform: uppercase; font-weight: 700;
+      margin-bottom: 2px;
+    }
+    .wave-corner .wave-head b { color: var(--accent); font-size: 12px; letter-spacing: .04em; }
+    .wave-corner canvas { position: relative; z-index: 1; width: 100%; height: 72px; display: block; border-radius: 6px; }
+    .wave-corner .wave-meta {
+      position: relative; z-index: 1;
+      display: flex; justify-content: space-between; gap: 6px;
+      margin-top: 3px; font-size: 8px; letter-spacing: .08em; text-transform: uppercase; color: #5a5852;
+    }
+    .wave-corner .wave-meta span i {
+      display: inline-block; width: 8px; height: 3px; margin-right: 3px; vertical-align: middle; border-radius: 2px;
+    }
+    .wave-corner .wave-meta .raw i { background: rgba(105,127,116,.75); }
+    .wave-corner .wave-meta .filt i { background: #00a85a; }
+    .wave-corner .wave-meta .echo i { background: #c46a22; }
+    .wave-corner .wave-meta .lock i { background: #2b6cff; }
+    .wavelength-lock {
+      position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%);
+      z-index: 7; min-width: 160px; text-align: center;
+      padding: 5px 10px; border-radius: 999px;
+      border: 1px solid rgba(0,143,76,.28);
+      background: rgba(255,255,255,.88);
+      font-size: 8px; letter-spacing: .12em; text-transform: uppercase;
+      box-shadow: 0 6px 16px rgba(12,43,27,.08);
+    }
+    .wavelength-lock b { color: var(--accent); }
+    .core-wrap {
+      --heat: 0.18;
+      --softness: 0.55;
+    }
+    .core-wrap .heat-soft-field {
+      position: absolute; left: 50%; top: 51%; transform: translate(-50%, -50%);
+      width: min(420px, 70%); height: min(420px, 70%);
+      border-radius: 50%;
+      pointer-events: none; z-index: 1;
+      background:
+        radial-gradient(circle at 50% 50%,
+          rgba(255, 170, 70, calc(var(--heat) * 0.35)) 0%,
+          rgba(0, 168, 90, calc(var(--softness) * 0.16)) 38%,
+          rgba(0, 100, 55, 0.04) 62%,
+          transparent 72%);
+      filter: blur(calc(2px + var(--softness) * 10px));
+      transition: opacity .4s ease, filter .4s ease;
+      opacity: calc(0.45 + var(--heat) * 0.55);
+    }
+    @media (max-width: 1050px) {
+      .wave-corner { width: min(210px, 40%); }
+      .wave-corner canvas { height: 58px; }
+      .core-caption, .stability-card { bottom: 130px; }
+    }
+    @media (max-width: 780px) {
+      .wave-corner { position: relative; left: auto; right: auto; bottom: auto; width: 100%; margin: 6px 0; }
+      .wavelength-lock { position: relative; left: auto; bottom: auto; transform: none; margin: 8px auto; display: block; width: fit-content; }
+      .modulation-view { display: flex; flex-direction: column; }
+    }
     .content-view { padding: 15px; overflow: auto; }
     .section-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; }
     .data-card { border: 1px solid var(--soft-line); padding: 12px; background: #fff; }
@@ -388,11 +491,11 @@
 <div class="shell">
   <header class="topbar">
     <div class="micro-grid">
-      <div class="micro">VERSION: <b class="accent" id="app-version">v0.6.0</b></div><div class="micro">TEMP: <b id="header-temp">--°C</b></div>
+      <div class="micro">VERSION: <b class="accent" id="app-version">v0.7.1</b></div><div class="micro">TEMP: <b id="header-temp">--°C</b></div>
       <div class="micro">BUILD: <b>OBS-LAB-2035</b></div><div class="micro">MODE: <b id="header-mode">BALANCED</b></div>
-      <div class="micro">SESSION: <b id="header-session">--</b></div><div class="micro">AGENT: <b id="header-agent">UNBOUND</b></div>
+      <div class="micro">HOST: <b id="header-form">--</b></div><div class="micro">AGENT: <b id="header-agent">UNBOUND</b></div>
     </div>
-    <div><div class="title">PULSEFLOW GOVERNOR <span class="accent" id="title-version">v0.6.0</span></div><div class="subtitle">Computational Homeostasis Lab · Vector Pressure Memory</div></div>
+    <div><div class="title">PULSEFLOW GOVERNOR <span class="accent" id="title-version">v0.7.1</span></div><div class="subtitle">Know Thy System · Futurist Governor · Graph Memory</div></div>
     <div class="top-right">
       <div class="header-status-card">
         <div><span>QoS</span><b class="accent" id="header-qos">MONITOR</b></div>
@@ -412,6 +515,7 @@
     <button class="tab active" data-tab="modulation">Modulation</button>
     <button class="tab" data-tab="dataset">Dataset</button>
     <button class="tab" data-tab="memory">Memory</button>
+    <button class="tab" data-tab="futurist">Futurist</button>
     <button class="tab" data-tab="agent">Agent</button>
     <button class="tab" data-tab="analytics">Analytics</button>
     <button class="tab" data-tab="replay">Replay</button>
@@ -465,14 +569,43 @@
       </div>
 
       <div class="view active modulation-view" data-view="modulation">
-        <div class="status-block hud-card">Pulse network status<br>Stability: <span class="accent" id="core-stability">ACQUIRING</span><br>Turbulence: <span class="accent" id="core-turbulence">INSUFFICIENT DATA</span><br>Flow state: <span class="accent" id="core-phase">HOLD</span><br>Error rate: <span id="core-error">0.000</span></div>
-        <div class="clock-block hud-card">Sample clock: <span id="sample-clock">1.00 Hz</span><br>Cycle: <span id="cycle-value">0</span><br>Δt: <span id="dt-value">1000 ms</span></div>
+        <div class="status-block hud-card">
+          <div class="hud-title-row"><span>Condition · O-plane</span><strong id="core-stability">ACQUIRING</strong></div>
+          <div class="hud-grid">
+            <div class="hud-chip"><span>Turbulence</span><b id="core-turbulence">—</b></div>
+            <div class="hud-chip"><span>Phase</span><b id="core-phase">HOLD</b></div>
+            <div class="hud-chip"><span>Error |e|</span><b id="core-error">0.000</b></div>
+            <div class="hud-chip"><span>Drift δ</span><b id="gcmt-drift">0.000</b></div>
+            <div class="hud-chip"><span>Slack r</span><b id="gcmt-slack">—</b></div>
+            <div class="hud-chip"><span>Eco P</span><b id="gcmt-eco-p">—</b></div>
+            <div class="hud-chip"><span>Transduct T</span><b id="gcmt-transduct">—</b></div>
+            <div class="hud-chip"><span>Recovery</span><b id="gcmt-recovery">—</b></div>
+            <div class="hud-chip zone-adm" id="gcmt-zone-chip"><span>Envelope</span><b id="gcmt-zone">ADM</b></div>
+            <div class="hud-chip"><span>Cont. debt D</span><b id="gcmt-debt">0.00</b></div>
+          </div>
+        </div>
+        <div class="clock-block hud-card">
+          <div class="hud-title-row" style="flex-direction:row-reverse"><span>Arbiter · E/C-plane</span><strong id="gcmt-regime">M_L</strong></div>
+          <div class="hud-grid">
+            <div class="hud-chip regime"><span>Regime m*</span><b id="gcmt-regime-label">LOCAL</b></div>
+            <div class="hud-chip"><span>Legitimacy q</span><b id="gcmt-legit">—</b></div>
+            <div class="hud-chip"><span>Integrity p</span><b id="gcmt-integrity">—</b></div>
+            <div class="hud-chip"><span>Freshness f</span><b id="gcmt-fresh">—</b></div>
+            <div class="hud-chip"><span>Margin μ</span><b id="gcmt-margin">—</b></div>
+            <div class="hud-chip"><span>Contradiction ω</span><b id="gcmt-contra">—</b></div>
+            <div class="hud-chip"><span>Clock</span><b id="sample-clock">1.00 Hz</b></div>
+            <div class="hud-chip"><span>Cycle / Δt</span><b><span id="cycle-value">0</span> · <span id="dt-value">1000 ms</span></b></div>
+            <div class="hud-chip"><span>λ lock</span><b id="gcmt-lambda">—</b></div>
+            <div class="hud-chip"><span>Switch cost</span><b id="gcmt-switch">HOLD</b></div>
+          </div>
+        </div>
         <div class="coherence-scope-card">
           <div class="scope-head" title="Oscillation coherence measures how consistently the observed workload follows the governor’s filtered control trajectory. Stability can remain high while coherence is moderate when disturbances are bounded but irregular."><span>Oscillation coherence ⓘ</span><b id="coherence-damping">--%</b></div>
           <canvas id="coherence-scope" aria-label="Raw and filtered stress comparison"></canvas>
           <div class="scope-legend"><span><i class="raw"></i>Raw drift</span><span><i class="filtered"></i>Filtered flow</span><span id="coherence-mode">OBSERVE</span></div>
         </div>
         <div class="core-wrap" id="core-stage" data-state="observe">
+          <div class="heat-soft-field" id="heat-soft-field" aria-hidden="true"></div>
           <div class="field-cross"></div>
           <div class="orbit o1"></div><div class="orbit o2"></div><div class="orbit o3"></div><div class="orbit-ticks"></div>
           <div class="flow-line flow-cpu"></div><div class="flow-line flow-ram"></div><div class="flow-line flow-gpu"></div><div class="flow-line flow-io"></div>
@@ -488,6 +621,27 @@
         </div>
         <div class="core-caption">— Data flow<br><span class="accent">— Pulse modulation</span><br>··· Residual feedback<br>– – Agent directive</div>
         <div class="stability-card">System stability<br><b class="accent" id="stability-label">ACQUIRING</b><br><br>Confidence <b id="core-confidence">0.00</b></div>
+        <div class="wave-corner oscillation" title="Oscillation: raw plant motion vs filtered governor trajectory on a shared wavelength lock.">
+          <div class="wave-head"><span>Oscillation</span><b id="osc-coherence">--%</b></div>
+          <canvas id="oscillation-scope" aria-label="Oscillation wavelength scope raw versus filtered stress"></canvas>
+          <div class="wave-meta">
+            <span class="raw"><i></i>Raw</span>
+            <span class="filt"><i></i>Filtered</span>
+            <span class="lock"><i></i><span id="osc-period">λ lock</span></span>
+          </div>
+        </div>
+        <div class="wave-corner reverberation" title="Reverberation: residue echo and recovery after each pressure pulse — heat softens sharp edges.">
+          <div class="wave-head"><span>Reverberation</span><b id="reverb-decay">--</b></div>
+          <canvas id="reverberation-scope" aria-label="Reverberation residue echo scope"></canvas>
+          <div class="wave-meta">
+            <span class="echo"><i></i>Residue</span>
+            <span class="filt"><i></i>Recovery</span>
+            <span class="lock"><i></i><span id="reverb-period">λ sync</span></span>
+          </div>
+        </div>
+        <div class="wavelength-lock" id="wavelength-lock" title="Both corner scopes share one dominant wavelength estimated from filtered stress zero-crossings.">
+          λ sync <b id="lambda-samples">—</b> samples · heat <b id="heat-readout">—</b>
+        </div>
       </div>
 
       <div class="view content-view" data-view="dataset">
@@ -495,7 +649,7 @@
           <div class="data-card"><h3>Active Dataset</h3><div class="big-value" id="dataset-samples">0</div><div class="mini-copy"><b id="dataset-session">--</b><br><span id="dataset-size">0 B</span> persisted as JSONL observation frames.</div></div>
           <div class="data-card"><h3>Persistence Contract</h3><div class="mini-copy"><b>Dₜ = (Xₜ, Aₜ, Rₜ, Yₜ₊Δ)</b><br>Every interval stores machine and workload state, selected action, unresolved residue, measured outcome, and rolling metrics.</div></div>
         </div>
-        <div class="data-card" style="margin-top:10px"><h3>Saved Sessions</h3><div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap"><select id="session-select" style="min-width:280px;padding:7px;border:1px solid #222"></select><button class="btn" data-action="session-refresh">Refresh</button><button class="btn" data-action="session-load">Load Charts</button><button class="btn" data-action="session-live">Return Live</button><button class="btn" data-action="session-export">Export JSONL</button><button class="btn" data-action="session-compact">Analyze &amp; Delete Raw</button><button class="btn primary" data-action="session-new">New Session</button></div><div class="table-wrap"><table><thead><tr><th>Session</th><th>Samples</th><th>Bytes</th><th>Last sample</th><th>Target</th></tr></thead><tbody id="session-table"></tbody></table></div><p class="mini-copy">Analyze &amp; Delete Raw validates every frame, preserves an aggregate analysis receipt, then deletes the selected inactive JSONL and metadata to reclaim space. The active session is protected.</p><pre class="json-box" id="compaction-receipt" style="margin-top:8px">No session compacted in this run.</pre></div>
+        <div class="data-card" style="margin-top:10px"><h3>Saved Sessions</h3><div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap"><select id="session-select" style="min-width:280px;padding:7px;border:1px solid #222"></select><button class="btn" data-action="session-refresh">Refresh</button><button class="btn" data-action="session-load">Load Charts</button><button class="btn" data-action="session-live">Return Live</button><button class="btn" data-action="session-export">Export JSONL</button><button class="btn" data-action="session-compact">Analyze &amp; Delete Raw</button><button class="btn primary" data-action="session-learn">Learn All → Graph Blobs</button><button class="btn" data-action="session-new">New Session</button></div><div class="table-wrap"><table><thead><tr><th>Session</th><th>Samples</th><th>Bytes</th><th>Last sample</th><th>Target</th></tr></thead><tbody id="session-table"></tbody></table></div><p class="mini-copy">After each recording: <b>Learn All → Graph Blobs</b> summarizes inactive sessions, calibrates Futurist skill, stores a compact graph blob, and deletes heavy raw JSONL. The active session is protected.</p><pre class="json-box" id="compaction-receipt" style="margin-top:8px">No session compacted in this run.</pre></div>
         <div class="data-card" style="margin-top:10px"><h3>Latest Frame</h3><pre class="json-box" id="latest-frame-json">Waiting for first observation frame…</pre></div>
       </div>
 
@@ -520,6 +674,22 @@
         </div>
         <div class="data-card" style="margin-top:10px"><h3>Learned Iterations</h3><div class="table-wrap"><table><thead><tr><th>Iteration</th><th>Version</th><th>Samples</th><th>Raw reclaimed</th><th>Transduction</th><th>Slack</th></tr></thead><tbody id="memory-table"></tbody></table></div></div>
         <div class="data-card" style="margin-top:10px"><h3>Discoveries</h3><pre class="json-box" id="memory-discoveries">No compact learning iteration loaded.</pre></div>
+      </div>
+
+      <div class="view content-view" data-view="futurist">
+        <div class="section-grid">
+          <div class="data-card"><h3>Know Thy System</h3><div class="big-value" id="futurist-form">--</div><div class="mini-copy" id="futurist-known">Adaptive profile not loaded.</div></div>
+          <div class="data-card"><h3>Envelope</h3><div class="big-value" id="futurist-envelope">HOLD</div><div class="mini-copy" id="futurist-reason">Multi-horizon foresight is advisory only and never widens authority.</div></div>
+          <div class="data-card"><h3>Pressure Risk</h3><div class="big-value" id="futurist-risk">--%</div><div class="mini-copy">Bounded risk of crossing the configured pressure limit inside the forecast horizon.</div></div>
+          <div class="data-card"><h3>Skill vs Persist</h3><div class="big-value" id="futurist-skill">--</div><div class="mini-copy" id="futurist-skill-copy">Calibrated when a session is learned into a graph blob.</div></div>
+        </div>
+        <div class="section-grid" style="margin-top:10px">
+          <div class="data-card"><h3>Stress H=5</h3><div class="big-value" id="futurist-stress-h5">--</div></div>
+          <div class="data-card"><h3>RAM H=5</h3><div class="big-value" id="futurist-ram-h5">--</div></div>
+          <div class="data-card"><h3>Governor Ability</h3><div class="big-value" id="futurist-ability">--</div><div class="mini-copy" id="futurist-ability-copy">Eco duty and actuation rate while Active.</div></div>
+          <div class="data-card"><h3>Memory Guards</h3><div class="big-value" id="futurist-guards">--</div><div class="mini-copy" id="futurist-weights">Adaptive soft / hard / critical thresholds.</div></div>
+        </div>
+        <div class="data-card" style="margin-top:10px"><h3>Futurist Channels</h3><pre class="json-box" id="futurist-json">Waiting for multi-horizon forecast…</pre></div>
       </div>
 
       <div class="view content-view" data-view="agent">
@@ -740,6 +910,7 @@
     "session-live": loadHistory,
     "session-export": exportSession,
     "session-compact": compactSession,
+    "session-learn": learnAllSessions,
     "memory-refresh": loadLearningIterations,
     "memory-load": loadLearningDataset,
     "replay-load": loadReplayFrames,
@@ -764,6 +935,146 @@
   function computeOscillationDamping() {
     const coherence = App.status && App.status.metrics ? App.status.metrics.oscillation_coherence : null;
     return {damping: coherence == null ? null : clamp(coherence, 0, 1) * 100};
+  }
+
+  /**
+   * GCMT v1.3 → PulseFlow corner condition/arbiter chips.
+   * Client-side mapping: efficient, receipt-oriented display only (no auto-promotion).
+   * z = (δ,κ,μ,r,f,ω,q_leg,p_int) approximated from live telemetry + authority.
+   */
+  function renderGcmtCorners(status, control, metrics, telemetry, stabilityPct) {
+    const residual = Math.abs(Number(control.residue_memory) || 0);
+    const raw = Number(control.raw_stress);
+    const filt = Number(control.filtered_stress);
+    const contra = (Number.isFinite(raw) && Number.isFinite(filt)) ? Math.abs(raw - filt) : 0;
+    // δ origin drift: residue + latent pressure + positive pressure momentum
+    const latent = Number(metrics.latent_pressure) || 0;
+    const momentum = Math.max(0, Number(metrics.pressure_momentum_per_minute) || 0);
+    let drift = clamp(residual * 0.55 + latent * 0.35 + clamp(momentum / 0.05, 0, 1) * 0.10, 0, 1);
+    // κ address/coherence condition: inverse of oscillation coherence
+    const coh = metrics.oscillation_coherence == null ? 0.5 : clamp(Number(metrics.oscillation_coherence), 0, 1);
+    // μ margin: forecast/policy confidence
+    let margin = clamp(Math.max(Number(metrics.forecast_confidence) || 0, Number(metrics.policy_confidence) || 0), 0, 1);
+    // r effective capacity/slack
+    const slack = clamp(Number(metrics.homeostatic_slack) || 0, 0, 1);
+    const ecoP = clamp(Number(metrics.ecosystem_pressure) || 0, 0, 1);
+    // f freshness: verification receipt age + io signal
+    let fresh = 0.55;
+    if (status.verification_receipt && status.verification_receipt.timestamp_ms) {
+      const ageMs = Math.max(0, Date.now() - Number(status.verification_receipt.timestamp_ms));
+      // verification valid window is 5 minutes
+      fresh = clamp(1 - ageMs / 300000, 0, 1);
+    } else if (status.authority_state === "observation" || status.authority_state === "discovered") {
+      fresh = telemetry && telemetry.io_signal_fresh ? 0.7 : 0.45;
+    } else {
+      fresh = 0.25;
+    }
+    if (telemetry && telemetry.io_signal_fresh) fresh = clamp(fresh + 0.1, 0, 1);
+    // ω contradiction density
+    const omega = clamp(contra * 2.2 + (String(metrics.turbulence_state).includes("unstable") ? 0.25 : 0), 0, 1);
+    // q legitimacy from authority lattice
+    const auth = String(status.authority_state || "observation");
+    const legitMap = {
+      observation: 0.55, discovered: 0.62, connected: 0.72, verified: 0.88,
+      active: 0.95, paused: 0.80, faulted: 0.20, disconnected: 0.40
+    };
+    let legit = legitMap[auth] != null ? legitMap[auth] : 0.5;
+    if (status.failed_invariant) legit = Math.min(legit, 0.25);
+    // p integrity: receipt success + no storage fault heuristics
+    let integrity = status.verification_receipt && status.verification_receipt.success === false ? 0 : 1;
+    if (status.failed_invariant) integrity = 0;
+    if (auth === "faulted") integrity = 0;
+
+    // Envelope zones for local continuation M_L
+    const localLoss = clamp(0.45 * drift + 0.25 * ecoP + 0.15 * omega + 0.15 * (1 - slack), 0, 1);
+    let zone = "ADM", zoneClass = "zone-adm";
+    if (localLoss > 0.62 || integrity === 0 || legit < 0.35) { zone = "INV"; zoneClass = "zone-inv"; }
+    else if (localLoss > 0.38 || auth === "faulted" || auth === "paused") { zone = "UNC"; zoneClass = "zone-unc"; }
+
+    if (App.continuationDebt == null) App.continuationDebt = 0;
+    const addDebt = Math.max(0, drift - 0.18) * 0.35
+      + Math.max(0, ecoP - 0.70) * 0.25
+      + Math.max(0, 0.35 - margin) * 0.15
+      + Math.max(0, 0.45 - fresh) * 0.10
+      + (zone === "INV" ? 0.12 : zone === "UNC" ? 0.05 : 0);
+    App.continuationDebt = clamp(0.92 * App.continuationDebt + addDebt, 0, 4);
+    if (zone === "ADM" && drift < 0.12) App.continuationDebt *= 0.96;
+
+    let regime = "M_L", regimeLabel = "LOCAL", switchCost = "HOLD";
+    const prev = App.lastRegime || "M_L";
+    if (integrity === 0 || auth === "faulted") {
+      regime = "M_B"; regimeLabel = "ROLLBACK";
+    } else if (legit < 0.35 && (status.governor_active || auth === "active")) {
+      regime = "M_Q"; regimeLabel = "QUARANTINE";
+    } else if (margin < 0.12 && zone !== "ADM" && (metrics.samples || 0) >= 8) {
+      regime = "M_A"; regimeLabel = "ABSTAIN";
+    } else if (zone === "INV" || (zone === "UNC" && drift > 0.45)) {
+      if (App.continuationDebt > 0.8 || (status.session_samples || 0) > 200) {
+        regime = "M_E"; regimeLabel = "EVIDENCE";
+      } else {
+        regime = "M_R"; regimeLabel = "RE-ANCHOR";
+      }
+    } else if (zone === "UNC") {
+      regime = "M_R"; regimeLabel = "RE-ANCHOR";
+    } else {
+      regime = "M_L"; regimeLabel = "LOCAL";
+    }
+    if (prev !== "M_L" && regime === "M_L" && App.continuationDebt > 0.35) {
+      regime = prev;
+      regimeLabel = ({M_R:"RE-ANCHOR",M_E:"EVIDENCE",M_A:"ABSTAIN",M_Q:"QUARANTINE",M_B:"ROLLBACK"}[prev] || "HOLD");
+    }
+    if (regime !== prev) {
+      switchCost = "SWITCH";
+      App.regimeHold = 0;
+    } else {
+      App.regimeHold = (App.regimeHold || 0) + 1;
+      switchCost = App.regimeHold >= 3 ? "DWELL" : "HOLD";
+    }
+    App.lastRegime = regime;
+
+    // λ estimate shared with corner scopes
+    const filtSeries = (App.history || []).slice(-64).map(f => Number(f.controller && f.controller.filtered_stress) || 0);
+    const lambda = estimateWavelength(filtSeries);
+
+    // Prefer backend GCMT fields when present (v0.7.1+).
+    const backend = status.regime || {};
+    const bcond = backend.condition || {};
+    const useBackend = backend.regime_code || metrics.memory_regime;
+    if (useBackend) {
+      drift = Number(metrics.condition_drift != null ? metrics.condition_drift : bcond.drift != null ? bcond.drift : drift);
+      legit = Number(metrics.condition_legitimacy != null ? metrics.condition_legitimacy : bcond.legitimacy != null ? bcond.legitimacy : legit);
+      integrity = Number(metrics.condition_integrity != null ? metrics.condition_integrity : bcond.integrity != null ? bcond.integrity : integrity);
+      fresh = Number(metrics.condition_freshness != null ? metrics.condition_freshness : bcond.freshness != null ? bcond.freshness : fresh);
+      margin = Number(metrics.condition_margin != null ? metrics.condition_margin : bcond.margin != null ? bcond.margin : margin);
+      zone = String(metrics.envelope_zone || backend.zone_code || zone).toUpperCase();
+      zoneClass = zone === "INV" ? "zone-inv" : zone === "UNC" ? "zone-unc" : "zone-adm";
+      regime = String(metrics.memory_regime || backend.regime_code || regime);
+      regimeLabel = String(metrics.memory_regime_label || backend.regime_label || regimeLabel);
+      App.continuationDebt = Number(metrics.continuation_debt != null ? metrics.continuation_debt : backend.continuation_debt != null ? backend.continuation_debt : App.continuationDebt);
+      switchCost = String(backend.switch_cost || switchCost);
+    }
+
+    setText("#gcmt-drift", number(drift, 3));
+    setText("#gcmt-slack", `${number(slack * 100, 0)}%`);
+    setText("#gcmt-eco-p", `${number(ecoP * 100, 0)}%`);
+    setText("#gcmt-transduct", number(metrics.pressure_transduction || 0, 3));
+    setText("#gcmt-recovery", number(metrics.recovery_balance || 0, 2));
+    setText("#gcmt-zone", zone);
+    setText("#gcmt-debt", number(App.continuationDebt, 2));
+    setText("#gcmt-regime", regime);
+    setText("#gcmt-regime-label", regimeLabel);
+    setText("#gcmt-legit", `${number(legit * 100, 0)}%`);
+    setText("#gcmt-integrity", integrity >= 0.5 ? "OK" : "FAIL");
+    setText("#gcmt-fresh", `${number(fresh * 100, 0)}%`);
+    setText("#gcmt-margin", number(margin, 2));
+    setText("#gcmt-contra", number(omega, 2));
+    setText("#gcmt-lambda", lambda != null ? String(Math.round(lambda)) : "—");
+    setText("#gcmt-switch", switchCost);
+    const zoneChip = $("#gcmt-zone-chip");
+    if (zoneChip) {
+      zoneChip.classList.remove("zone-adm", "zone-unc", "zone-inv");
+      zoneChip.classList.add(zoneClass);
+    }
   }
 
   function deriveSystemLink(status) {
@@ -1006,6 +1317,19 @@
     toast(`Analysis preserved; ${formatBytes(receipt.freed_bytes)} of raw data deleted.`);
     await Promise.all([loadSessions(), loadLearningIterations()]);
   }
+  async function learnAllSessions() {
+    const approved = window.confirm(
+      "Learn all inactive recordings into graph blobs, calibrate Futurist skill, and delete raw JSONL? Active session is kept."
+    );
+    if (!approved) return;
+    const report = await api("/api/session/learn", {
+      method: "POST",
+      body: {confirm_delete_raw: true, all_inactive: true, min_raw_bytes: 0}
+    });
+    $("#compaction-receipt").textContent = JSON.stringify(report, null, 2);
+    toast(`Learned ${report.compacted || 0} session(s); freed ${formatBytes(report.freed_bytes || 0)}.`);
+    await Promise.all([loadSessions(), loadLearningIterations()]);
+  }
   async function setStage(stage) {
     await api("/api/learning-stage", {method: "POST", body: {stage}});
     toast(`Learning stage set to ${stage}.`);
@@ -1143,9 +1467,11 @@
     $("#connection-label").textContent = App.connected ? "CONNECTED" : "DISCONNECTED";
     $("#header-temp").textContent = gpu.temperature_c != null ? `${number(gpu.temperature_c,0)}°C` : "--°C";
     $("#header-mode").textContent = String(s.mode || "balanced").toUpperCase();
-    setText("#app-version", `v${s.version || "0.6.0"}`);
-    setText("#title-version", `v${s.version || "0.6.0"}`);
-    $("#header-session").textContent = String(s.session_id || "--").slice(-12).toUpperCase();
+    setText("#app-version", `v${s.version || "0.7.1"}`);
+    setText("#title-version", `v${s.version || "0.7.1"}`);
+    const profile = s.system_profile || {};
+    const futurist = s.futurist || {};
+    setText("#header-form", String(profile.form_factor || s.platform || "--").replaceAll("_"," ").toUpperCase());
     $("#header-agent").textContent = s.agent_bound ? String(io.agent || "bound").toUpperCase() : "UNBOUND";
     $("#header-qos").textContent = String(c.applied_qos || "monitor_only").replaceAll("_"," ").toUpperCase();
     $("#record-lamp").style.opacity = s.recording ? "1" : ".15";
@@ -1172,6 +1498,7 @@
     setText("#core-phase", String(c.phase || "hold").toUpperCase()); setText("#core-error", number(Math.abs(c.error || 0),3));
     setText("#sample-clock", App.config ? `${number(1000 / App.config.sample_interval_ms,2)} Hz` : "1.00 Hz");
     setText("#cycle-value", String(s.session_samples || 0)); setText("#dt-value", App.config ? `${App.config.sample_interval_ms} ms` : "1000 ms");
+    renderGcmtCorners(s, c, m, t, stability);
     setText("#node-cpu", `${number(t.cpu_percent)}%`); setText("#node-process", t.process ? `${number(t.process.cpu_percent)}%` : "--%");
     setText("#node-ram", `${number(t.memory_percent)}%`); setText("#node-ram-used", `${number(t.memory_used_gb,1)} GB`);
     setText("#node-gpu", gpu.utilization_percent != null ? `${number(gpu.utilization_percent)}%` : "--%"); setText("#node-gpu-temp", gpu.temperature_c != null ? `${number(gpu.temperature_c)}°C` : "--°C");
@@ -1219,6 +1546,32 @@
     setText("#metric-resource-coupling", m.resource_coupling != null ? `${number(m.resource_coupling * 100,1)}%` : "--%");
     setText("#coupling-copy", "Correlation of resource changes exposes coordinated motion; it does not prove which process caused it.");
 
+    setText("#futurist-form", String(profile.form_factor || "--").replaceAll("_"," ").toUpperCase());
+    setText("#futurist-known", profile.known_as || profile.adaptation_reason || "Adaptive profile not loaded.");
+    setText("#futurist-envelope", String(futurist.envelope || m.futurist_envelope || "hold").replaceAll("_"," ").toUpperCase());
+    setText("#futurist-reason", futurist.reason || "Multi-horizon foresight is advisory only and never widens authority.");
+    setText("#futurist-risk", `${number((futurist.pressure_risk != null ? futurist.pressure_risk : m.forecast_pressure_risk || 0) * 100,1)}%`);
+    const skill = futurist.skill || {};
+    setText("#futurist-skill", skill.samples_scored ? `${number((skill.relative_improvement || 0) * 100,0)}%` : "—");
+    setText("#futurist-skill-copy", skill.samples_scored
+      ? `H=5 MAE ${number(skill.mae_h5,4)} vs persist ${number(skill.mae_persist_h5,4)} · ${skill.beats_persist ? "beats persist" : "not yet calibrated"}`
+      : "Calibrated when a session is learned into a graph blob.");
+    {
+      const stressChannel = (futurist.channels || []).find(c => c.channel === "stress");
+      const stressH5 = m.futurist_stress_h5 != null ? m.futurist_stress_h5
+        : (stressChannel && (stressChannel.horizons || []).find(h => h.horizon_samples === 5) || {}).forecast;
+      setText("#futurist-stress-h5", stressH5 != null ? number(stressH5, 3) : "--");
+      const ramH5 = m.futurist_ram_h5 != null ? m.futurist_ram_h5
+        : ((futurist.channels || []).find(c => c.channel === "ram") && ((futurist.channels || []).find(c => c.channel === "ram").horizons || []).find(h => h.horizon_samples === 5) || {}).forecast;
+      setText("#futurist-ram-h5", ramH5 != null ? `${number(ramH5 * 100, 1)}%` : "--");
+    }
+    setText("#futurist-ability", `${number((m.eco_duty_cycle || 0) * 100,0)}% ECO`);
+    setText("#futurist-ability-copy", `Active duty ${number((m.governor_active_duty || 0) * 100,0)}% · ${number(m.actuation_rate_per_minute || 0,2)} transitions/min · ${m.qos_transition_count || 0} transitions.`);
+    setText("#futurist-guards", profile.memory_hard_percent != null ? `${number(profile.memory_soft_percent,0)}/${number(profile.memory_hard_percent,0)}/${number(profile.memory_critical_percent,0)}` : "--");
+    setText("#futurist-weights", profile.adaptation_reason || "Adaptive soft / hard / critical thresholds.");
+    const futuristBox = $("#futurist-json");
+    if (futuristBox) futuristBox.textContent = JSON.stringify({system_profile: profile, futurist}, null, 2);
+
     setText("#recording-label", s.recording ? "RECORDING" : "PAUSED"); setText("#record-duration", formatDuration(m.elapsed_seconds)); setText("#record-size", formatBytes(s.session_bytes)); setText("#record-samples", String(s.session_samples));
     $$('[data-action="recording-toggle"]').forEach(node => node.textContent = s.recording ? "Pause Recording" : "Start Recording");
     setText("#ledger-state", s.recording ? "ACTIVE" : "PAUSED");
@@ -1231,7 +1584,7 @@
     $$('.mode-grid .btn').forEach(node => node.classList.toggle("active", node.dataset.action === `mode-${s.mode}`));
     $$('.stage-grid .btn').forEach(node => node.classList.toggle("active", node.dataset.action === `stage-${s.learning_stage}`));
     if (!App.tuningInitialized && s.tuning) initializeTuning(s.tuning);
-    renderSchedules(c, t); renderTables(); renderLedger(); drawCharts(); drawHeatmap(); drawCoherenceScope();
+    renderSchedules(c, t); renderTables(); renderLedger(); drawCharts(); drawHeatmap(); drawCoherenceScope(); drawCornerWaveScopes(s, c, m, t);
   }
 
   function setText(selector, value) { const node = $(selector); if (node) node.textContent = value; }
@@ -1345,13 +1698,191 @@
     draw(frames.map(frame=>Number(frame.controller.filtered_stress)||0),"#00a85a",1.8);
   }
 
+  /** Dominant period (samples) from zero-crossings of demeaned series. */
+  function estimateWavelength(values) {
+    if (!values || values.length < 12) return null;
+    const mean = values.reduce((a, b) => a + b, 0) / values.length;
+    const centered = values.map(v => v - mean);
+    let crossings = [];
+    for (let i = 1; i < centered.length; i++) {
+      if (centered[i - 1] <= 0 && centered[i] > 0) crossings.push(i);
+    }
+    if (crossings.length < 2) {
+      // Fallback: lag of first positive autocorr peak.
+      let bestLag = 8, best = -1;
+      for (let lag = 4; lag <= Math.min(40, Math.floor(centered.length / 3)); lag++) {
+        let num = 0, den = 0;
+        for (let i = 0; i < centered.length - lag; i++) {
+          num += centered[i] * centered[i + lag];
+          den += centered[i] * centered[i];
+        }
+        const corr = den > 1e-12 ? num / den : 0;
+        if (corr > best) { best = corr; bestLag = lag; }
+      }
+      return clamp(bestLag, 4, 48);
+    }
+    const gaps = [];
+    for (let i = 1; i < crossings.length; i++) gaps.push(crossings[i] - crossings[i - 1]);
+    gaps.sort((a, b) => a - b);
+    const mid = gaps[Math.floor(gaps.length / 2)];
+    return clamp(mid, 4, 48);
+  }
+
+  function smoothSeries(values, passes) {
+    let out = values.slice();
+    const n = Math.max(0, passes | 0);
+    for (let p = 0; p < n; p++) {
+      const next = out.slice();
+      for (let i = 1; i < out.length - 1; i++) {
+        next[i] = 0.25 * out[i - 1] + 0.5 * out[i] + 0.25 * out[i + 1];
+      }
+      out = next;
+    }
+    return out;
+  }
+
+  function prepareCanvas(canvas) {
+    if (!canvas) return null;
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width < 2 || rect.height < 2) return null;
+    const ratio = window.devicePixelRatio || 1;
+    canvas.width = Math.max(1, Math.floor(rect.width * ratio));
+    canvas.height = Math.max(1, Math.floor(rect.height * ratio));
+    const ctx = canvas.getContext("2d");
+    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+    ctx.clearRect(0, 0, rect.width, rect.height);
+    return { ctx, w: rect.width, h: rect.height };
+  }
+
+  function paintHeatSoftBackground(ctx, w, h, heat, softness) {
+    const g = ctx.createRadialGradient(w * 0.35, h * 0.4, 2, w * 0.5, h * 0.55, Math.max(w, h) * 0.75);
+    g.addColorStop(0, `rgba(255, 180, 80, ${0.08 + heat * 0.28})`);
+    g.addColorStop(0.45, `rgba(0, 168, 90, ${0.05 + softness * 0.14})`);
+    g.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, w, h);
+    // Soft circular "heated surface" rings
+    const rings = 3 + Math.round(softness * 2);
+    for (let i = 0; i < rings; i++) {
+      const t = (i + 1) / (rings + 1);
+      ctx.beginPath();
+      ctx.ellipse(w * 0.5, h * 0.55, w * (0.18 + t * 0.32), h * (0.22 + t * 0.28), 0, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(0,143,76,${0.04 + softness * 0.08 * (1 - t)})`;
+      ctx.lineWidth = 1 + softness * 1.5;
+      ctx.stroke();
+    }
+  }
+
+  function drawSyncedWave(ctx, w, h, series, color, width, filled) {
+    if (!series || series.length < 2) return;
+    const finite = series.filter(Number.isFinite);
+    if (!finite.length) return;
+    let min = Math.min(...finite), max = Math.max(...finite);
+    if (Math.abs(max - min) < 1e-6) { min -= 0.05; max += 0.05; }
+    const span = max - min;
+    ctx.beginPath();
+    series.forEach((value, index) => {
+      const x = index / (series.length - 1) * w;
+      const y = h - 4 - clamp((value - min) / span, 0, 1) * (h - 8);
+      if (index === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    });
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width;
+    ctx.lineJoin = "round";
+    ctx.lineCap = "round";
+    ctx.stroke();
+    if (filled) {
+      ctx.lineTo(w, h);
+      ctx.lineTo(0, h);
+      ctx.closePath();
+      ctx.fillStyle = color.replace(")", ",0.14)").replace("rgb", "rgba").replace("#00a85a", "rgba(0,168,90,0.14)").replace("#c46a22", "rgba(196,106,34,0.14)");
+      if (color.startsWith("#")) {
+        ctx.fillStyle = color === "#00a85a" ? "rgba(0,168,90,0.14)" : color === "#c46a22" ? "rgba(196,106,34,0.12)" : "rgba(0,143,76,0.10)";
+      }
+      ctx.fill();
+    }
+  }
+
+  function drawPhaseLockMarks(ctx, w, h, period, samples) {
+    if (!period || period < 2 || samples < period) return;
+    const cycles = Math.floor((samples - 1) / period);
+    ctx.strokeStyle = "rgba(43,108,255,0.22)";
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 4]);
+    for (let c = 1; c <= cycles; c++) {
+      const x = (c * period) / (samples - 1) * w;
+      ctx.beginPath();
+      ctx.moveTo(x, 2);
+      ctx.lineTo(x, h - 2);
+      ctx.stroke();
+    }
+    ctx.setLineDash([]);
+  }
+
+  function drawCornerWaveScopes(status, control, metrics, telemetry) {
+    const frames = App.history.slice(-96);
+    const raw = frames.map(f => Number(f.controller && f.controller.raw_stress) || 0);
+    const filt = frames.map(f => Number(f.controller && f.controller.filtered_stress) || 0);
+    const residue = frames.map(f => Number(f.controller && f.controller.residue_memory) || 0);
+    const period = estimateWavelength(filt.length >= 12 ? filt : raw) || 12;
+
+    // Heat softens surface: higher thermal + higher residual activity → more blur/heat.
+    const temp = telemetry && telemetry.gpu && telemetry.gpu.temperature_c != null
+      ? Number(telemetry.gpu.temperature_c) : 40;
+    const heat = clamp((temp - 35) / 45, 0, 1);
+    const activity = filt.length > 2
+      ? clamp(Math.sqrt(filt.slice(1).reduce((s, v, i) => s + Math.pow(v - filt[i], 2), 0) / (filt.length - 1)) * 8, 0, 1)
+      : 0;
+    // Softness rises with heat and falls with chaotic activity (like annealing).
+    const softness = clamp(0.25 + heat * 0.55 - activity * 0.2 + (metrics.flow_stability || 0) * 0.2, 0.15, 0.95);
+    const smoothPasses = Math.round(1 + softness * 3);
+
+    const core = $("#core-stage");
+    if (core) {
+      core.style.setProperty("--heat", heat.toFixed(3));
+      core.style.setProperty("--softness", softness.toFixed(3));
+    }
+    setText("#heat-readout", `${number(heat * 100, 0)}%`);
+    setText("#lambda-samples", String(Math.round(period)));
+    setText("#osc-period", `λ ${Math.round(period)}`);
+    setText("#reverb-period", `λ ${Math.round(period)}`);
+    const coh = metrics.oscillation_coherence;
+    setText("#osc-coherence", coh == null ? "--%" : `${number(coh * 100, 0)}%`);
+    const lastRes = residue.length ? Math.abs(residue[residue.length - 1]) : Math.abs(control.residue_memory || 0);
+    setText("#reverb-decay", number(lastRes, 3));
+
+    // --- Oscillation scope (raw vs filtered, shared λ) ---
+    const osc = prepareCanvas($("#oscillation-scope"));
+    if (osc && frames.length >= 2) {
+      paintHeatSoftBackground(osc.ctx, osc.w, osc.h, heat, softness);
+      drawPhaseLockMarks(osc.ctx, osc.w, osc.h, period, frames.length);
+      const rawS = smoothSeries(raw, Math.max(0, smoothPasses - 2));
+      const filtS = smoothSeries(filt, smoothPasses);
+      drawSyncedWave(osc.ctx, osc.w, osc.h, rawS, "rgba(105,127,116,0.75)", 1.2, false);
+      drawSyncedWave(osc.ctx, osc.w, osc.h, filtS, "#00a85a", 2.0, true);
+    }
+
+    // --- Reverberation scope (residue echo + recovery envelope, same λ) ---
+    const rev = prepareCanvas($("#reverberation-scope"));
+    if (rev && frames.length >= 2) {
+      paintHeatSoftBackground(rev.ctx, rev.w, rev.h, heat * 0.9, softness);
+      drawPhaseLockMarks(rev.ctx, rev.w, rev.h, period, frames.length);
+      const echo = smoothSeries(residue.map(v => Math.abs(v)), smoothPasses);
+      // Synthetic recovery envelope: inverse of |residue| smoothed, on same λ grid.
+      const recovery = echo.map(v => clamp(1 - v * 2.5, 0, 1));
+      const recoveryS = smoothSeries(recovery, smoothPasses + 1);
+      drawSyncedWave(rev.ctx, rev.w, rev.h, recoveryS, "#00a85a", 1.5, true);
+      drawSyncedWave(rev.ctx, rev.w, rev.h, echo, "#c46a22", 1.8, false);
+    }
+  }
+
   function drawHeatmap() {
     const canvas=$("#heatmap");const rect=canvas.getBoundingClientRect();const ratio=window.devicePixelRatio||1;canvas.width=Math.max(1,rect.width*ratio);canvas.height=Math.max(1,rect.height*ratio);const ctx=canvas.getContext("2d");ctx.scale(ratio,ratio);const frames=App.history.slice(-Math.min(Number.isFinite(App.chartWindow) ? App.chartWindow : 120,120));const rows=[f=>f.machine.cpu_percent/100,f=>(f.machine.gpu_percent||0)/100,f=>f.machine.ram_percent/100,f=>clamp(((f.workload.input_queue||0)+(f.workload.output_queue||0))/64,0,1)];const cw=rect.width/Math.max(frames.length,1),rh=rect.height/4;ctx.clearRect(0,0,rect.width,rect.height);frames.forEach((frame,x)=>rows.forEach((getter,y)=>{const value=clamp(getter(frame),0,1);ctx.fillStyle=`rgba(0,143,76,${0.08+value*.86})`;ctx.fillRect(x*cw,y*rh,Math.max(1,cw-1),Math.max(1,rh-1));}));
   }
 
   async function init() {
     bindControls();
-    window.addEventListener("resize", () => { drawCharts(); drawHeatmap(); drawCoherenceScope(); drawMemoryChart(); });
+    window.addEventListener("resize", () => { drawCharts(); drawHeatmap(); drawCoherenceScope(); drawCornerWaveScopes(App.status||{}, (App.status&&App.status.control)||{}, (App.status&&App.status.metrics)||{}, (App.status&&App.status.telemetry)||{}); drawMemoryChart(); });
     try { App.config = await api("/api/config"); $("#config-json").textContent = JSON.stringify(App.config,null,2); } catch (error) { $("#config-json").textContent = error.message; }
     await Promise.allSettled([loadInterlinkHandshake(), loadProcesses(), loadHistory(), loadSessions(), loadLearningIterations(), loadPersistentEvents()]);
     await pollStatus();

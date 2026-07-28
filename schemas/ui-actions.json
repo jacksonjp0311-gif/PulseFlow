@@ -110,6 +110,12 @@
       "route": "/api/export/"
     },
     {
+      "id": "session-learn",
+      "kind": "http",
+      "method": "POST",
+      "route": "/api/session/learn"
+    },
+    {
       "id": "session-compact",
       "kind": "http",
       "method": "POST",

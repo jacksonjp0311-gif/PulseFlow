@@ -2,11 +2,12 @@ use crate::{
     analytics,
     authority::{transition, AuthorityAction, AuthorityState},
     config::Config,
+    futurist,
     model::{
         now_ms, stable_hash, EvidenceReceipt, IoSignal, LearningStage, OperatingMode, QosLevel,
         RuntimeEvent, RuntimeState, RuntimeTuning, SignalInput, TargetIdentity, TuningPatch,
     },
-    replay, storage,
+    replay, storage, system,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -81,6 +82,24 @@ struct InterlinkConnectInput {
 struct CompactSessionInput {
     session_id: String,
     confirm_delete_raw: bool,
+}
+
+#[derive(Debug, Deserialize)]
+struct LearnSessionsInput {
+    confirm_delete_raw: bool,
+    /// When true, compact every inactive session with at least one frame.
+    #[serde(default = "default_true")]
+    all_inactive: bool,
+    /// Optional minimum raw bytes before auto-delete (default 256 KiB).
+    #[serde(default = "default_min_raw_bytes")]
+    min_raw_bytes: u64,
+}
+
+fn default_true() -> bool {
+    true
+}
+fn default_min_raw_bytes() -> u64 {
+    256 * 1024
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -222,6 +241,37 @@ fn dispatch(
         ("GET", "/api/learning/iterations") => {
             let datasets = storage::list_learning_datasets(&config.storage.directory)?;
             Response::json(200, &datasets)
+        }
+        ("GET", "/api/system") => {
+            let profile = state
+                .read()
+                .map_err(|_| "state lock poisoned")?
+                .system_profile
+                .clone();
+            Response::json(200, &profile)
+        }
+        ("GET", "/api/futurist") => {
+            let snapshot = state
+                .read()
+                .map_err(|_| "state lock poisoned")?
+                .futurist
+                .clone();
+            Response::json(200, &snapshot)
+        }
+        ("POST", "/api/system/refresh") => {
+            let (governor_supported, has_gpu) = {
+                let locked = state.read().map_err(|_| "state lock poisoned")?;
+                (locked.governor_supported, locked.telemetry.gpu.is_some())
+            };
+            let profile = system::probe(governor_supported, has_gpu);
+            let mut locked = state.write().map_err(|_| "state lock poisoned")?;
+            locked.system_profile = profile.clone();
+            let event = locked.push_event(
+                "system_profile",
+                format!("System profile refreshed: {}", profile.known_as),
+            );
+            persist_event(config, &event);
+            Response::json(200, &profile)
         }
         ("GET", "/api/ledger/tail") => {
             let limit = query_limit(&request.query, 100, 2_000);
@@ -729,36 +779,70 @@ fn dispatch(
                     "The active session cannot be compacted. Start a new session first.".into(),
                 );
             }
-            let frames = storage::read_session_frames(
-                &config.storage.directory,
-                &input.session_id,
-                usize::MAX,
-            )?;
-            if frames.is_empty() {
-                return Err(
-                    "Cannot compact a session with no validated observation frames.".into(),
-                );
+            let receipt = compact_one_session(state.clone(), config, &input.session_id)?;
+            Response::json(200, &receipt)
+        }
+        ("POST", "/api/session/learn") => {
+            validate_json_content_type(&request.headers)?;
+            let input: LearnSessionsInput = serde_json::from_slice(request.body)
+                .map_err(|error| format!("invalid learn JSON: {error}"))?;
+            if !input.confirm_delete_raw {
+                return Err("confirm_delete_raw must be true".into());
             }
-            let summary =
-                analytics::summarize_session(&input.session_id, &frames, config.analytics.epsilon);
-            let points = analytics::learning_graph_points(&frames, 240);
-            let receipt = storage::compact_session(
-                &config.storage.directory,
-                &input.session_id,
-                summary,
-                points,
-            )?;
+            let current_session = state
+                .read()
+                .map_err(|_| "state lock poisoned")?
+                .session_id
+                .clone();
+            let sessions = storage::list_sessions(&config.storage.directory)?;
+            let mut receipts = Vec::new();
+            let mut total_freed = 0u64;
+            for session in sessions {
+                if session.session_id == current_session {
+                    continue;
+                }
+                if session.samples == 0 {
+                    continue;
+                }
+                if !input.all_inactive && session.bytes < input.min_raw_bytes {
+                    continue;
+                }
+                match compact_one_session(state.clone(), config, &session.session_id) {
+                    Ok(receipt) => {
+                        total_freed = total_freed.saturating_add(receipt.freed_bytes);
+                        receipts.push(receipt);
+                    }
+                    Err(error) => {
+                        if let Ok(mut locked) = state.write() {
+                            let event = locked.push_event(
+                                "session_learn_fault",
+                                format!("{}: {error}", session.session_id),
+                            );
+                            persist_event(config, &event);
+                        }
+                    }
+                }
+            }
             if let Ok(mut locked) = state.write() {
                 let event = locked.push_event(
-                    "session_compacted",
+                    "session_learn",
                     format!(
-                        "Session {} was analyzed; {} raw bytes were deleted after its receipt was persisted.",
-                        receipt.session_id, receipt.freed_bytes
+                        "Learned {} session(s) into graph blobs; freed {} bytes of raw JSONL.",
+                        receipts.len(),
+                        total_freed
                     ),
                 );
                 persist_event(config, &event);
             }
-            Response::json(200, &receipt)
+            Response::json(
+                200,
+                &json!({
+                    "schema_version": "pulseflow.learn-batch.v1",
+                    "compacted": receipts.len(),
+                    "freed_bytes": total_freed,
+                    "receipts": receipts,
+                }),
+            )
         }
         ("POST", "/api/replay") => {
             validate_json_content_type(&request.headers)?;
@@ -836,6 +920,75 @@ fn dispatch(
         }),
         _ => dynamic_route(&request, state, config),
     }
+}
+
+fn compact_one_session(
+    state: Arc<RwLock<RuntimeState>>,
+    config: &Config,
+    session_id: &str,
+) -> Result<storage::SessionCompactionReceipt, String> {
+    let frames = storage::read_session_frames(&config.storage.directory, session_id, usize::MAX)?;
+    if frames.is_empty() {
+        return Err("Cannot compact a session with no validated observation frames.".into());
+    }
+    let mut summary = analytics::summarize_session(session_id, &frames, config.analytics.epsilon);
+    let calibration = futurist::calibrate_session(session_id, &frames, config.analytics.epsilon);
+    summary.futurist_skill_improvement = calibration.skill.relative_improvement;
+    summary.futurist_envelope = if calibration.skill.beats_persist {
+        "calibrated".into()
+    } else {
+        "hold".into()
+    };
+    let (form_factor, known_as) = state
+        .read()
+        .map(|locked| {
+            (
+                locked.system_profile.form_factor.as_str().to_string(),
+                locked.system_profile.known_as.clone(),
+            )
+        })
+        .unwrap_or_else(|_| ("desktop".into(), "unknown".into()));
+    summary.system_form_factor = form_factor.clone();
+    let points = analytics::learning_graph_points(&frames, 240);
+    let options = storage::CompactOptions {
+        system_form_factor: form_factor,
+        system_known_as: known_as,
+        futurist_skill_mae_h5: calibration.skill.mae_h5,
+        futurist_skill_improvement: calibration.skill.relative_improvement,
+        futurist_beats_persist: calibration.skill.beats_persist,
+    };
+    let receipt = storage::compact_session_with_options(
+        &config.storage.directory,
+        session_id,
+        summary,
+        points,
+        options,
+    )?;
+    if let Ok(mut locked) = state.write() {
+        if calibration.skill.samples_scored > locked.futurist.skill.samples_scored {
+            locked.futurist.skill = calibration.skill.clone();
+            locked.futurist.calibrated = calibration.skill.beats_persist;
+        }
+        let event = locked.push_event(
+            "session_compacted",
+            format!(
+                "Session {} → graph blob; freed {} bytes; futurist Δ={:.0}% vs persist.",
+                receipt.session_id,
+                receipt.freed_bytes,
+                calibration.skill.relative_improvement * 100.0
+            ),
+        );
+        persist_event(config, &event);
+    }
+    // Persist calibration receipt beside analysis receipts.
+    let calib_dir = std::path::Path::new(&config.storage.directory).join("analysis-receipts");
+    let _ = std::fs::create_dir_all(&calib_dir);
+    let calib_path = calib_dir.join(format!("{session_id}.futurist.json"));
+    let _ = std::fs::write(
+        calib_path,
+        serde_json::to_vec_pretty(&calibration).unwrap_or_default(),
+    );
+    Ok(receipt)
 }
 
 fn dynamic_route(

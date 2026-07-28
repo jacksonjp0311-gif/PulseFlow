@@ -4,10 +4,14 @@ use pulseflow_governor::{
     authority::AuthorityState,
     config::Config,
     controller::PulseController,
+    futurist,
     governor::{platform_governor_supported, ProcessGovernor},
     model::{now_ms, ObservationFrame, QosLevel, RuntimeEvent, RuntimeState, RuntimeTuning},
-    policy, server,
+    policy::{self, MemoryGuard},
+    regime::RegimeArbiter,
+    server,
     storage::{append_event, FrameRecorder},
+    system,
     telemetry::TelemetryCollector,
 };
 use std::{
@@ -30,6 +34,12 @@ fn run() -> Result<(), String> {
         env::var("PULSEFLOW_CONFIG").unwrap_or_else(|_| "config/pulseflow.json".into());
     let config = Config::load(&config_path)?;
     let args: Vec<String> = env::args().skip(1).collect();
+    if args
+        .first()
+        .is_some_and(|arg| arg.eq_ignore_ascii_case("learn"))
+    {
+        return run_learn_batch(&config);
+    }
     let (target_pid, target_label, _child) = resolve_target(&args)?;
     let supported = platform_governor_supported();
     let state = Arc::new(RwLock::new(RuntimeState::new(
@@ -53,6 +63,62 @@ fn run() -> Result<(), String> {
 
     let bind = config.bind.clone();
     server::serve(&bind, state, config)
+}
+
+fn run_learn_batch(config: &Config) -> Result<(), String> {
+    use pulseflow_governor::{analytics, futurist, storage};
+    let sessions = storage::list_sessions(&config.storage.directory)?;
+    let mut compacted = 0u64;
+    let mut freed = 0u64;
+    let profile = system::probe(platform_governor_supported(), false);
+    for session in sessions {
+        if session.samples == 0 {
+            continue;
+        }
+        let frames = match storage::read_session_frames(
+            &config.storage.directory,
+            &session.session_id,
+            usize::MAX,
+        ) {
+            Ok(frames) if !frames.is_empty() => frames,
+            _ => continue,
+        };
+        let mut summary =
+            analytics::summarize_session(&session.session_id, &frames, config.analytics.epsilon);
+        let calibration =
+            futurist::calibrate_session(&session.session_id, &frames, config.analytics.epsilon);
+        summary.futurist_skill_improvement = calibration.skill.relative_improvement;
+        summary.system_form_factor = profile.form_factor.as_str().into();
+        let points = analytics::learning_graph_points(&frames, 240);
+        let options = storage::CompactOptions {
+            system_form_factor: profile.form_factor.as_str().into(),
+            system_known_as: profile.known_as.clone(),
+            futurist_skill_mae_h5: calibration.skill.mae_h5,
+            futurist_skill_improvement: calibration.skill.relative_improvement,
+            futurist_beats_persist: calibration.skill.beats_persist,
+        };
+        match storage::compact_session_with_options(
+            &config.storage.directory,
+            &session.session_id,
+            summary,
+            points,
+            options,
+        ) {
+            Ok(receipt) => {
+                compacted += 1;
+                freed = freed.saturating_add(receipt.freed_bytes);
+                println!(
+                    "◆ learned {} → graph blob (freed {} bytes, futurist Δ={:.0}%)",
+                    receipt.session_id,
+                    receipt.freed_bytes,
+                    calibration.skill.relative_improvement * 100.0
+                );
+            }
+            Err(error) => eprintln!("◇ skip {}: {error}", session.session_id),
+        }
+    }
+    println!("◆ learn complete · {compacted} blob(s) · freed {freed} bytes");
+    Ok(())
 }
 
 fn resolve_target(args: &[String]) -> Result<(Option<u32>, String, Option<Child>), String> {
@@ -89,7 +155,7 @@ fn resolve_target(args: &[String]) -> Result<(Option<u32>, String, Option<Child>
         return Ok((Some(pid), label, Some(child)));
     }
 
-    Err("unknown command; use serve, attach <pid>, or run -- <program> [args]".into())
+    Err("unknown command; use serve, learn, attach <pid>, or run -- <program> [args]".into())
 }
 
 fn run_control_loop(state: Arc<RwLock<RuntimeState>>, config: Config) {
@@ -108,6 +174,25 @@ fn run_control_loop(state: Arc<RwLock<RuntimeState>>, config: Config) {
     let mut sequence = 0u64;
     let mut recorder = open_current_recorder(&state, &config);
     let mut pending_frame: Option<(ObservationFrame, bool)> = None;
+    let mut profile_refresh_counter = 0u64;
+    let mut regime_arbiter = RegimeArbiter::default();
+    let mut last_regime_code = String::new();
+    // Initial adaptive profile — know thy system.
+    {
+        let initial = system::probe(platform_governor_supported(), false);
+        let weights = system::renormalize_weights(&initial.adaptive_weights, false, false);
+        controller.update_weights(weights);
+        controller.set_eco_ram_enter_percent(initial.eco_ram_enter_percent);
+        if let Ok(mut locked) = state.write() {
+            locked.system_profile = initial;
+            let message = format!(
+                "Know thy system: {} ({})",
+                locked.system_profile.known_as, locked.system_profile.adaptation_reason
+            );
+            let event = locked.push_event("system_profile", message);
+            let _ = append_event(&config.event_ledger_path, &event);
+        }
+    }
 
     loop {
         let snapshot = match state.read() {
@@ -162,7 +247,18 @@ fn run_control_loop(state: Arc<RwLock<RuntimeState>>, config: Config) {
             telemetry = TelemetryCollector::new(target_pid);
             let mut next = config.control.clone();
             tuning.apply_to(&mut next);
-            controller = PulseController::new(next, config.weights.clone(), monitor_only);
+            let (weights, eco_ram) = state
+                .read()
+                .ok()
+                .map(|locked| {
+                    (
+                        locked.system_profile.adaptive_weights.clone(),
+                        locked.system_profile.eco_ram_enter_percent,
+                    )
+                })
+                .unwrap_or_else(|| (config.weights.clone(), 88.0));
+            controller = PulseController::new(next, weights, monitor_only);
+            controller.set_eco_ram_enter_percent(eco_ram);
             governor = ProcessGovernor::new(target_pid, config.governor.clone());
             analytics.reset();
             pending_frame = None;
@@ -197,6 +293,24 @@ fn run_control_loop(state: Arc<RwLock<RuntimeState>>, config: Config) {
             && authority_state == AuthorityState::Active
             && target_alive
             && verification_fresh;
+
+        // Refresh host profile periodically so weights track the live plant.
+        profile_refresh_counter = profile_refresh_counter.saturating_add(1);
+        let has_gpu = sample.gpu.is_some();
+        if profile_refresh_counter == 1 || profile_refresh_counter % 30 == 0 {
+            let profile = system::probe(platform_governor_supported(), has_gpu);
+            let weights = system::renormalize_weights(
+                &profile.adaptive_weights,
+                has_gpu,
+                sample.io_signal_fresh,
+            );
+            controller.update_weights(weights);
+            controller.set_eco_ram_enter_percent(profile.eco_ram_enter_percent);
+            if let Ok(mut locked) = state.write() {
+                locked.system_profile = profile;
+            }
+        }
+
         let mut control = controller.step(
             &sample,
             mode,
@@ -225,13 +339,124 @@ fn run_control_loop(state: Arc<RwLock<RuntimeState>>, config: Config) {
             control.modulation = 0.0;
         }
 
-        let directive = policy::recommend(
+        let (memory_guard, form_factor_label) = state
+            .read()
+            .ok()
+            .map(|locked| {
+                (
+                    MemoryGuard::from(&locked.system_profile),
+                    locked.system_profile.form_factor.as_str().to_string(),
+                )
+            })
+            .unwrap_or_else(|| (MemoryGuard::default(), "desktop".into()));
+
+        // Rolling series for futurist multi-horizon foresight.
+        let (stress_series, ram_series, eco_series) = state
+            .read()
+            .ok()
+            .map(|locked| {
+                let stress: Vec<f64> = locked
+                    .history
+                    .iter()
+                    .map(|frame| frame.controller.filtered_stress)
+                    .chain(std::iter::once(control.filtered_stress))
+                    .collect();
+                let ram: Vec<f64> = locked
+                    .history
+                    .iter()
+                    .map(|frame| frame.machine.ram_percent)
+                    .chain(std::iter::once(sample.memory_percent))
+                    .collect();
+                let eco: Vec<f64> = locked
+                    .history
+                    .iter()
+                    .map(|frame| frame.metrics.ecosystem_pressure)
+                    .chain(std::iter::once(previous_metrics.ecosystem_pressure))
+                    .collect();
+                (stress, ram, eco)
+            })
+            .unwrap_or_default();
+        let mut futurist_snapshot = if stress_series.len() >= 8 {
+            futurist::snapshot_from_series(
+                &stress_series,
+                &ram_series,
+                &eco_series,
+                sample.gpu.as_ref().and_then(|gpu| gpu.temperature_c),
+                config.analytics.pressure_limit,
+                config.analytics.epsilon,
+            )
+        } else {
+            futurist::bootstrap_from_telemetry(&sample, config.analytics.pressure_limit)
+        };
+        if let Some(skill) = state
+            .read()
+            .ok()
+            .map(|locked| locked.futurist.skill.clone())
+        {
+            if skill.samples_scored > 0 {
+                futurist_snapshot.calibrated = skill.beats_persist;
+                futurist_snapshot.skill = skill;
+            }
+        }
+
+        let failed_invariant = state
+            .read()
+            .ok()
+            .and_then(|locked| locked.failed_invariant.clone())
+            .is_some();
+        let verification_ok = state
+            .read()
+            .ok()
+            .and_then(|locked| locked.verification_receipt.clone())
+            .map(|receipt| receipt.success)
+            .unwrap_or(true);
+        let session_samples = state
+            .read()
+            .ok()
+            .map(|locked| locked.session_samples)
+            .unwrap_or(0);
+        let regime_decision = regime_arbiter.decide(
+            &sample,
+            &control,
+            &previous_metrics,
+            authority_state,
+            verification_fresh,
+            verification_ok,
+            failed_invariant,
+            session_samples,
+        );
+
+        let mut directive = policy::recommend_with_guard(
             &sample,
             &control,
             &previous_metrics,
             stage,
             &config.agent_policy,
+            memory_guard,
+            &futurist_snapshot.envelope,
         );
+        // GCMT hard regimes force shadow / contract without widening authority.
+        use pulseflow_governor::regime::MemoryRegime;
+        match regime_decision.regime {
+            MemoryRegime::Abstain | MemoryRegime::Quarantine | MemoryRegime::Rollback => {
+                directive.shadow_only = true;
+                directive.allow_background_memory_work = false;
+                directive.recommended_concurrency = directive.recommended_concurrency.min(1);
+                directive.model_route = "efficient".into();
+                directive.reason = format!(
+                    "{} · regime {}",
+                    directive.reason, regime_decision.regime_label
+                );
+            }
+            MemoryRegime::Evidence | MemoryRegime::Reanchor => {
+                directive.shadow_only = true;
+                directive.reason = format!(
+                    "{} · regime {} suggests evidence/re-anchor before promotion.",
+                    directive.reason, regime_decision.regime_label
+                );
+            }
+            MemoryRegime::Local => {}
+        }
         let current_frame = ObservationFrame::new(
             session_id,
             experiment_id,
@@ -260,6 +485,40 @@ fn run_control_loop(state: Arc<RwLock<RuntimeState>>, config: Config) {
             frame.finalize_outcome(&sample);
             let horizon_seconds = (frame.outcome.horizon_ms as f64 / 1_000.0).clamp(0.001, 60.0);
             latest_metrics = analytics.update(&frame, horizon_seconds);
+            latest_metrics.futurist_envelope = futurist_snapshot.envelope.clone();
+            latest_metrics.system_form_factor = form_factor_label.clone();
+            latest_metrics.envelope_zone = regime_decision.zone_code.clone();
+            latest_metrics.memory_regime = regime_decision.regime_code.clone();
+            latest_metrics.memory_regime_label = regime_decision.regime_label.clone();
+            latest_metrics.continuation_debt = regime_decision.continuation_debt;
+            latest_metrics.condition_drift = regime_decision.condition.drift;
+            latest_metrics.condition_legitimacy = regime_decision.condition.legitimacy;
+            latest_metrics.condition_integrity = regime_decision.condition.integrity;
+            latest_metrics.condition_freshness = regime_decision.condition.freshness;
+            latest_metrics.condition_margin = regime_decision.condition.margin;
+            latest_metrics.regime_reason = regime_decision.reason.clone();
+            if let Some(channel) = futurist_snapshot
+                .channels
+                .iter()
+                .find(|channel| channel.channel == "stress")
+            {
+                latest_metrics.futurist_stress_h5 = channel
+                    .horizons
+                    .iter()
+                    .find(|horizon| horizon.horizon_samples == 5)
+                    .map(|horizon| horizon.forecast);
+            }
+            if let Some(channel) = futurist_snapshot
+                .channels
+                .iter()
+                .find(|channel| channel.channel == "ram")
+            {
+                latest_metrics.futurist_ram_h5 = channel
+                    .horizons
+                    .iter()
+                    .find(|horizon| horizon.horizon_samples == 5)
+                    .map(|horizon| horizon.forecast);
+            }
             frame.metrics = latest_metrics.clone();
             let suggestion =
                 adaptive::recommend(&tuning, &latest_metrics, stage, &config.agent_policy);
@@ -306,7 +565,23 @@ fn run_control_loop(state: Arc<RwLock<RuntimeState>>, config: Config) {
             locked.telemetry = sample;
             locked.control = control;
             locked.metrics = latest_metrics;
+            locked.futurist = futurist_snapshot.clone();
+            locked.regime = regime_decision.clone();
             locked.directive = directive;
+            if regime_decision.regime_code != last_regime_code && !last_regime_code.is_empty() {
+                ledger_events.push(locked.push_event(
+                    "regime_switch",
+                    format!(
+                        "{} → {} ({}); debt={:.2}; zone={}",
+                        last_regime_code,
+                        regime_decision.regime_code,
+                        regime_decision.regime_label,
+                        regime_decision.continuation_debt,
+                        regime_decision.zone_code
+                    ),
+                ));
+            }
+            last_regime_code = regime_decision.regime_code.clone();
             if let Some(suggestion) = latest_adaptive_suggestion {
                 locked.adaptive_suggestion = suggestion;
             }
@@ -413,5 +688,7 @@ fn print_banner(config: &Config, target_pid: Option<u32>, target_label: &str, su
             "DISABLED"
         }
     );
+    println!("├─ ◆  adaptive profile                  know-thy-system active");
+    println!("├─ ◆  futurist governor                 multi-horizon advisory");
     println!("└─ ◆  safety                            clocks / voltage / fans untouched");
 }

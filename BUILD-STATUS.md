@@ -1,23 +1,17 @@
-# PulseFlow Governor 0.6.0 Build Status
+# PulseFlow Governor 0.7.1 Build Status
 
 ## Candidate scope
 
+- adaptive **know-thy-system** host profiles (mobile / constrained desktop / desktop / server);
+- form-factor stress weights and memory guards for any machine class;
+- **Futurist Governor** multi-horizon foresight (H=1/5/15) with envelope suggestions;
+- process governor **ability ledger** (Eco duty, actuation rate, transitions);
+- secondary Eco assist when host RAM crosses adaptive Eco enter (stress can stay low);
+- batch **Learn → graph blob → delete raw JSONL** pipeline with Futurist skill calibration;
+- Memory tab graphs retained blobs after heavy recordings are deleted;
 - canonical discover/connect/verify/enable authority lattice;
 - separate control-authority and confirmed applied-modulation metrics;
-- reproducible rolling oscillation coherence;
-- recording-calibrated futurist pressure forecast;
-- controlled-turbulence classification;
-- v1-to-v2 conservative JSONL migration and deterministic rejection;
-- receipt-linked transitions and agent/process boundary regression tests;
-- runtime process discovery and in-dashboard connection;
-- dynamic control-loop rebinding without restarting the server;
-- explicit baseline and governed-session creation;
-- backend interlink verification endpoint;
-- 2035 modulation core visual reconstruction;
-- local agent pairing handshake;
-- expanded UI/API contracts and live smoke coverage.
 - vector-valued resource momentum, accumulation, dissipation, and transduction;
-- compact graph-ready iteration memory retained after raw-session deletion;
 - vendored Cortex v3 repository memory with an explicit no-authority boundary.
 
 ## Verification boundary

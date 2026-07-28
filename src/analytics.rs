@@ -23,6 +23,7 @@ struct MetricSample {
     residue_memory: f64,
     applied_modulation: f64,
     applied_qos: QosLevel,
+    governor_active: bool,
 }
 
 pub struct AnalyticsEngine {
@@ -95,6 +96,7 @@ impl AnalyticsEngine {
             residue_memory: frame.controller.residue_memory,
             applied_modulation: frame.controller.applied_modulation,
             applied_qos: frame.controller.applied_qos,
+            governor_active: frame.action.governor_active,
         });
         let capacity = self.config.rolling_window_samples.max(8);
         while self.window.len() > capacity {
@@ -168,6 +170,7 @@ impl AnalyticsEngine {
                 .clamp(0.0, 1.0)
             })
             .unwrap_or(0.0);
+        let ability = governor_ability_metrics(&self.window, self.elapsed_seconds);
         let turbulence_state = classify_turbulence(
             &stresses,
             mean(&queues),
@@ -266,7 +269,71 @@ impl AnalyticsEngine {
             vector_dissipation: homeostasis.vector_dissipation,
             pressure_transduction: homeostasis.pressure_transduction,
             net_vector_pressure: homeostasis.net_vector_pressure,
+            governor_active_duty: ability.governor_active_duty,
+            eco_duty_cycle: ability.eco_duty_cycle,
+            qos_transition_count: ability.qos_transition_count,
+            actuation_rate_per_minute: ability.actuation_rate_per_minute,
+            futurist_envelope: String::new(),
+            futurist_stress_h5: forecast_stress,
+            futurist_ram_h5: None,
+            system_form_factor: String::new(),
+            envelope_zone: String::new(),
+            memory_regime: String::new(),
+            memory_regime_label: String::new(),
+            continuation_debt: 0.0,
+            condition_drift: 0.0,
+            condition_legitimacy: 0.0,
+            condition_integrity: 1.0,
+            condition_freshness: 0.0,
+            condition_margin: 0.0,
+            regime_reason: String::new(),
         }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Default)]
+struct GovernorAbilityMetrics {
+    governor_active_duty: f64,
+    eco_duty_cycle: f64,
+    qos_transition_count: u64,
+    actuation_rate_per_minute: f64,
+}
+
+fn governor_ability_metrics(
+    window: &VecDeque<MetricSample>,
+    elapsed_seconds: f64,
+) -> GovernorAbilityMetrics {
+    if window.is_empty() {
+        return GovernorAbilityMetrics::default();
+    }
+    let total = window.len() as f64;
+    let active = window
+        .iter()
+        .filter(|sample| sample.governor_active)
+        .count() as f64;
+    let eco = window
+        .iter()
+        .filter(|sample| {
+            sample.governor_active
+                && matches!(sample.applied_qos, QosLevel::Eco | QosLevel::ThermalProtect)
+        })
+        .count() as f64;
+    let mut transitions = 0u64;
+    for pair in window.iter().collect::<Vec<_>>().windows(2) {
+        if pair[0].applied_qos != pair[1].applied_qos {
+            transitions = transitions.saturating_add(1);
+        }
+    }
+    let minutes = (elapsed_seconds / 60.0).max(1e-9);
+    GovernorAbilityMetrics {
+        governor_active_duty: (active / total).clamp(0.0, 1.0),
+        eco_duty_cycle: if active > 0.0 {
+            (eco / active).clamp(0.0, 1.0)
+        } else {
+            0.0
+        },
+        qos_transition_count: transitions,
+        actuation_rate_per_minute: transitions as f64 / minutes,
     }
 }
 
@@ -1084,6 +1151,48 @@ pub fn summarize_session(
         vector_dissipation: homeostasis.vector_dissipation,
         pressure_transduction: homeostasis.pressure_transduction,
         net_vector_pressure: homeostasis.net_vector_pressure,
+        governor_active_duty: {
+            let total = frames.len().max(1) as f64;
+            frames
+                .iter()
+                .filter(|frame| frame.action.governor_active)
+                .count() as f64
+                / total
+        },
+        eco_duty_cycle: {
+            let active = frames
+                .iter()
+                .filter(|frame| frame.action.governor_active)
+                .count()
+                .max(1) as f64;
+            frames
+                .iter()
+                .filter(|frame| {
+                    frame.action.governor_active
+                        && matches!(
+                            frame.controller.applied_qos,
+                            QosLevel::Eco | QosLevel::ThermalProtect
+                        )
+                })
+                .count() as f64
+                / active
+        },
+        qos_transition_count: frames
+            .windows(2)
+            .filter(|window| window[0].controller.applied_qos != window[1].controller.applied_qos)
+            .count() as u64,
+        actuation_rate_per_minute: {
+            let transitions = frames
+                .windows(2)
+                .filter(|window| {
+                    window[0].controller.applied_qos != window[1].controller.applied_qos
+                })
+                .count() as f64;
+            transitions / (duration_seconds / 60.0).max(1e-9)
+        },
+        futurist_envelope: String::new(),
+        futurist_skill_improvement: 0.0,
+        system_form_factor: String::new(),
     }
 }
 

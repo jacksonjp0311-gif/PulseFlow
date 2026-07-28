@@ -307,6 +307,60 @@ pub struct RuntimeMetrics {
     pub pressure_transduction: f64,
     /// Signed vector accumulation minus dissipation.
     pub net_vector_pressure: f64,
+    /// Fraction of samples with governor_active while process QoS was non-monitor.
+    #[serde(default)]
+    pub governor_active_duty: f64,
+    /// Applied Eco/ThermalProtect duty cycle while governor was active.
+    #[serde(default)]
+    pub eco_duty_cycle: f64,
+    /// QoS transitions observed in the rolling window / session.
+    #[serde(default)]
+    pub qos_transition_count: u64,
+    /// QoS transitions per minute (ability metric).
+    #[serde(default)]
+    pub actuation_rate_per_minute: f64,
+    /// Futurist envelope suggestion (hold / suggest_eco / contract_agent / thermal_watch).
+    #[serde(default)]
+    pub futurist_envelope: String,
+    /// Multi-horizon stress forecast at H=5 when available.
+    #[serde(default)]
+    pub futurist_stress_h5: Option<f64>,
+    /// Multi-horizon RAM forecast (normalized) at H=5 when available.
+    #[serde(default)]
+    pub futurist_ram_h5: Option<f64>,
+    /// Host form factor label from the adaptive system profile.
+    #[serde(default)]
+    pub system_form_factor: String,
+    /// GCMT-style local envelope zone: ADM / UNC / INV.
+    #[serde(default)]
+    pub envelope_zone: String,
+    /// Selected memory regime code (M_L … M_B).
+    #[serde(default)]
+    pub memory_regime: String,
+    /// Human label for the selected regime.
+    #[serde(default)]
+    pub memory_regime_label: String,
+    /// Continuation debt accumulator.
+    #[serde(default)]
+    pub continuation_debt: f64,
+    /// Condition drift proxy δ.
+    #[serde(default)]
+    pub condition_drift: f64,
+    /// Condition legitimacy q.
+    #[serde(default)]
+    pub condition_legitimacy: f64,
+    /// Condition integrity p.
+    #[serde(default)]
+    pub condition_integrity: f64,
+    /// Condition freshness f.
+    #[serde(default)]
+    pub condition_freshness: f64,
+    /// Condition margin μ.
+    #[serde(default)]
+    pub condition_margin: f64,
+    /// Arbiter reason (short).
+    #[serde(default)]
+    pub regime_reason: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -791,6 +845,15 @@ pub struct RuntimeState {
     pub reset_revision: u64,
     pub events: Vec<RuntimeEvent>,
     pub latest_frame: Option<ObservationFrame>,
+    /// Adaptive host identity: form factor, weights, memory guards.
+    #[serde(default)]
+    pub system_profile: crate::system::SystemProfile,
+    /// Multi-horizon futurist foresight (advisory only).
+    #[serde(default)]
+    pub futurist: crate::futurist::FuturistSnapshot,
+    /// GCMT-inspired regime arbitration decision for the latest sample.
+    #[serde(default)]
+    pub regime: crate::regime::RegimeDecision,
     #[serde(skip)]
     pub history: VecDeque<ObservationFrame>,
 }
@@ -852,6 +915,9 @@ impl RuntimeState {
             tuning,
             tuning_revision: 0,
             reset_revision: 0,
+            system_profile: crate::system::probe(governor_supported, false),
+            futurist: crate::futurist::FuturistSnapshot::default(),
+            regime: crate::regime::RegimeDecision::default(),
             events: vec![RuntimeEvent {
                 timestamp_ms: now_ms(),
                 kind: "boot".into(),
@@ -1022,6 +1088,20 @@ pub struct SessionSummary {
     pub vector_dissipation: f64,
     pub pressure_transduction: f64,
     pub net_vector_pressure: f64,
+    #[serde(default)]
+    pub governor_active_duty: f64,
+    #[serde(default)]
+    pub eco_duty_cycle: f64,
+    #[serde(default)]
+    pub qos_transition_count: u64,
+    #[serde(default)]
+    pub actuation_rate_per_minute: f64,
+    #[serde(default)]
+    pub futurist_envelope: String,
+    #[serde(default)]
+    pub futurist_skill_improvement: f64,
+    #[serde(default)]
+    pub system_form_factor: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -1050,6 +1130,19 @@ pub struct LearningDataset {
     pub summary: SessionSummary,
     pub points: Vec<LearningGraphPoint>,
     pub discoveries: Vec<String>,
+    /// Compact graph blob label for UI (alias of learning dataset).
+    #[serde(default)]
+    pub blob_kind: String,
+    #[serde(default)]
+    pub system_form_factor: String,
+    #[serde(default)]
+    pub system_known_as: String,
+    #[serde(default)]
+    pub futurist_skill_mae_h5: f64,
+    #[serde(default)]
+    pub futurist_skill_improvement: f64,
+    #[serde(default)]
+    pub futurist_beats_persist: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -1066,6 +1159,10 @@ pub struct LearningDatasetInfo {
     pub homeostatic_slack: f64,
     pub pressure_transduction: f64,
     pub net_vector_pressure: f64,
+    #[serde(default)]
+    pub system_form_factor: String,
+    #[serde(default)]
+    pub futurist_beats_persist: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]

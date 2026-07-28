@@ -240,11 +240,36 @@ pub fn read_session_bytes(
     fs::read(&path).map_err(|error| format!("cannot read {}: {error}", path.display()))
 }
 
+#[derive(Debug, Clone, Default)]
+pub struct CompactOptions {
+    pub system_form_factor: String,
+    pub system_known_as: String,
+    pub futurist_skill_mae_h5: f64,
+    pub futurist_skill_improvement: f64,
+    pub futurist_beats_persist: bool,
+}
+
 pub fn compact_session(
     directory: impl AsRef<Path>,
     session_id: &str,
     summary: SessionSummary,
     points: Vec<crate::model::LearningGraphPoint>,
+) -> Result<SessionCompactionReceipt, String> {
+    compact_session_with_options(
+        directory,
+        session_id,
+        summary,
+        points,
+        CompactOptions::default(),
+    )
+}
+
+pub fn compact_session_with_options(
+    directory: impl AsRef<Path>,
+    session_id: &str,
+    mut summary: SessionSummary,
+    points: Vec<crate::model::LearningGraphPoint>,
+    options: CompactOptions,
 ) -> Result<SessionCompactionReceipt, String> {
     let safe = safe_session_id(session_id).ok_or("unsafe session id")?;
     let directory = directory.as_ref();
@@ -258,6 +283,10 @@ pub fn compact_session(
     let dataset_directory = directory.join("learning-datasets");
     fs::create_dir_all(&dataset_directory).map_err(|error| error.to_string())?;
     let dataset_path = dataset_directory.join(format!("{safe}.dataset.json"));
+    if summary.system_form_factor.is_empty() {
+        summary.system_form_factor = options.system_form_factor.clone();
+    }
+    summary.futurist_skill_improvement = options.futurist_skill_improvement;
     let discoveries = derive_discoveries(&summary);
     let dataset = LearningDataset {
         schema_version: "pulseflow.learning.v1".into(),
@@ -270,10 +299,36 @@ pub fn compact_session(
         summary: summary.clone(),
         points,
         discoveries,
+        blob_kind: "graph_blob".into(),
+        system_form_factor: options.system_form_factor,
+        system_known_as: options.system_known_as,
+        futurist_skill_mae_h5: options.futurist_skill_mae_h5,
+        futurist_skill_improvement: options.futurist_skill_improvement,
+        futurist_beats_persist: options.futurist_beats_persist,
     };
     let dataset_bytes = serde_json::to_vec_pretty(&dataset).map_err(|error| error.to_string())?;
     fs::write(&dataset_path, dataset_bytes)
         .map_err(|error| format!("cannot write {}: {error}", dataset_path.display()))?;
+    // Lightweight graph index entry for UI listing without reloading full blobs.
+    let index_path = dataset_directory.join(format!("{safe}.blob.json"));
+    let index = serde_json::json!({
+        "schema_version": "pulseflow.graph-blob.v1",
+        "iteration_id": safe,
+        "dataset_path": dataset_path.file_name().and_then(|v| v.to_str()).unwrap_or(""),
+        "points": dataset.points.len(),
+        "raw_bytes_reclaimed": dataset.raw_bytes,
+        "homeostatic_slack": dataset.summary.homeostatic_slack,
+        "pressure_transduction": dataset.summary.pressure_transduction,
+        "governor_active_duty": dataset.summary.governor_active_duty,
+        "eco_duty_cycle": dataset.summary.eco_duty_cycle,
+        "futurist_beats_persist": dataset.futurist_beats_persist,
+        "system_form_factor": dataset.system_form_factor,
+    });
+    fs::write(
+        &index_path,
+        serde_json::to_vec_pretty(&index).map_err(|error| error.to_string())?,
+    )
+    .map_err(|error| format!("cannot write {}: {error}", index_path.display()))?;
     let receipt = SessionCompactionReceipt {
         schema_version: "pulseflow.compaction.v1".into(),
         session_id: safe.clone(),
@@ -319,6 +374,25 @@ fn derive_discoveries(summary: &SessionSummary) -> Vec<String> {
     if summary.homeostatic_slack < 0.15 {
         discoveries.push("Homeostatic slack remained below the provisional 0.15 reserve.".into());
     }
+    if summary.governor_active_duty > 0.0 && summary.eco_duty_cycle <= 0.0 {
+        discoveries.push(
+            "Governor was active but Eco/ThermalProtect never applied; check RAM Eco assist and stress weights."
+                .into(),
+        );
+    }
+    if summary.eco_duty_cycle > 0.0 {
+        discoveries.push(format!(
+            "Process governor Eco duty cycle was {:.1}% with {:.2} actuations/min.",
+            summary.eco_duty_cycle * 100.0,
+            summary.actuation_rate_per_minute
+        ));
+    }
+    if summary.futurist_skill_improvement >= 0.10 {
+        discoveries.push(format!(
+            "Futurist H=5 stress forecast beat persist-last by {:.0}%.",
+            summary.futurist_skill_improvement * 100.0
+        ));
+    }
     if discoveries.is_empty() {
         discoveries
             .push("No bounded vector-pressure threshold was crossed in this iteration.".into());
@@ -341,6 +415,14 @@ pub fn list_learning_datasets(
         }
         let bytes = fs::read(&path).map_err(|error| error.to_string())?;
         if let Ok(dataset) = serde_json::from_slice::<LearningDataset>(&bytes) {
+            // Skip lightweight .blob.json index files.
+            if path
+                .file_name()
+                .and_then(|name| name.to_str())
+                .is_some_and(|name| name.ends_with(".blob.json"))
+            {
+                continue;
+            }
             datasets.push(LearningDatasetInfo {
                 iteration_id: dataset.iteration_id,
                 created_at_ms: dataset.created_at_ms,
@@ -354,6 +436,8 @@ pub fn list_learning_datasets(
                 homeostatic_slack: dataset.summary.homeostatic_slack,
                 pressure_transduction: dataset.summary.pressure_transduction,
                 net_vector_pressure: dataset.summary.net_vector_pressure,
+                system_form_factor: dataset.system_form_factor,
+                futurist_beats_persist: dataset.futurist_beats_persist,
             });
         }
     }

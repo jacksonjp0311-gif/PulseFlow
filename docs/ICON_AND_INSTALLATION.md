@@ -15,20 +15,27 @@ and one amber observation trace.
 
 ## Windows installation
 
-Run:
+Run (or re-run after every evolution):
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\Install-PulseFlow.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\Install-PulseFlow.ps1 -DesktopShortcut
 ```
 
-The installer builds the release binary, copies the configuration and ICO into
-the per-user installation directory, and creates a Start Menu shortcut with an
-explicit `IconLocation`. Use `-DesktopShortcut` for an additional desktop
-shortcut.
+The installer:
+
+1. builds the release binary (omit with `-SkipBuild` if `target\release` is fresh);
+2. stops any running `pulseflow-governor` so the exe can be overwritten;
+3. copies the binary, config, and ICO into the per-user install directory;
+4. rewrites Start Menu and Desktop shortcuts with a versioned description;
+5. records `installation.json` with the version from `Cargo.toml`.
+
+If a desktop shortcut already exists (or a prior install had `-DesktopShortcut`),
+later installs refresh that desktop icon automatically even without the switch.
 
 Installed shortcuts use `Launch-PulseFlow.ps1`, which reuses a healthy instance
 when one already owns port 8791. Otherwise it starts the governor, waits for its
-health endpoint, and opens the dashboard in the default browser.
+health endpoint, and opens the dashboard with a version-stamped URL so the tab
+title does not stay stuck on an old build.
 
 The release executable embeds the same multi-resolution icon during the Rust
 build, so Windows Explorer keeps the PulseFlow identity even when the

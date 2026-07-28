@@ -45,7 +45,7 @@ $Required = @(
     'docs\ARCHITECTURE.md','docs\CONTROL_MODEL.md','docs\DATA_MODEL.md',
     'docs\AUTHORITY_STATE_MODEL.md','docs\METRIC_GLOSSARY.md',
     'docs\EXPERIMENTAL_METHODOLOGY.md','docs\MIGRATION_V2.md',
-    'docs\FUTURIST_GOVERNOR.md','docs\ICON_AND_INSTALLATION.md','src\authority.rs',
+    'docs\FUTURIST_GOVERNOR.md','docs\ICON_AND_INSTALLATION.md','src\authority.rs','src\system.rs','src\futurist.rs','src\regime.rs',
     'src\main.rs','src\server.rs','tests\authority_tests.rs','tests\ui_contract_tests.rs'
 )
 foreach ($Relative in $Required) {

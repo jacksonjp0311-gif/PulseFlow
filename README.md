@@ -13,7 +13,7 @@
   [![Rust 1.75+](https://img.shields.io/badge/Rust-1.75%2B-111820?logo=rust&logoColor=white)](Cargo.toml)
   [![Windows Governor](https://img.shields.io/badge/Windows-process%20QoS-16c784?logo=windows11&logoColor=white)](#safety-is-the-feature)
   [![License: MIT](https://img.shields.io/badge/License-MIT-d9a441.svg)](LICENSE)
-  [![Version](https://img.shields.io/badge/version-0.6.0-16c784.svg)](Cargo.toml)
+  [![Version](https://img.shields.io/badge/version-0.7.1-16c784.svg)](Cargo.toml)
 </div>
 
 <p align="center">

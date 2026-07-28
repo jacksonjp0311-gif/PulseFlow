@@ -6,6 +6,9 @@ use crate::{
 pub struct PulseController {
     config: ControlConfig,
     weights: StressWeights,
+    /// Secondary Eco trigger: host RAM percent at which Eco is requested
+    /// even when classical stress remains below the setpoint (adaptive).
+    eco_ram_enter_percent: f64,
     filtered_stress: f64,
     stress_velocity: f64,
     previous_error: f64,
@@ -22,6 +25,7 @@ impl PulseController {
         Self {
             config,
             weights,
+            eco_ram_enter_percent: 88.0,
             filtered_stress: 0.0,
             stress_velocity: 0.0,
             previous_error: 0.0,
@@ -42,6 +46,14 @@ impl PulseController {
         self.config = config;
         self.integral = self.integral.clamp(-2.0, 2.0);
         self.authority = self.authority.clamp(0.0, 1.0);
+    }
+
+    pub fn update_weights(&mut self, weights: StressWeights) {
+        self.weights = weights;
+    }
+
+    pub fn set_eco_ram_enter_percent(&mut self, percent: f64) {
+        self.eco_ram_enter_percent = percent.clamp(50.0, 99.0);
     }
 
     pub fn reset(&mut self, monitor_only: bool) {
@@ -125,13 +137,22 @@ impl PulseController {
             self.thermal_latched = false;
         }
 
-        let requested_qos = if !governor_active {
+        let mut requested_qos = if !governor_active {
             QosLevel::MonitorOnly
         } else if self.thermal_latched {
             QosLevel::ThermalProtect
         } else {
             self.select_qos(mode)
         };
+        // Adaptive secondary actuator: on memory-starved hosts, classical stress
+        // can stay low while RAM saturates. Enter Eco without waiting for PID lag.
+        if governor_active
+            && !self.thermal_latched
+            && telemetry.memory_percent >= self.eco_ram_enter_percent
+            && !matches!(requested_qos, QosLevel::Eco | QosLevel::ThermalProtect)
+        {
+            requested_qos = QosLevel::Eco;
+        }
         if requested_qos != self.qos_level {
             self.qos_level = requested_qos;
             self.transition_count = self.transition_count.saturating_add(1);
@@ -290,6 +311,12 @@ impl PulseController {
     fn reason(&self, telemetry: &Telemetry, error: f64, residue: f64) -> String {
         if self.thermal_latched {
             return "GPU thermal guard is latched; efficiency QoS is requested until the release threshold is reached.".into();
+        }
+        if telemetry.memory_percent >= self.eco_ram_enter_percent {
+            return format!(
+                "Host RAM {:.1}% crossed the adaptive Eco assist threshold ({:.0}%); efficiency QoS is requested.",
+                telemetry.memory_percent, self.eco_ram_enter_percent
+            );
         }
         if telemetry
             .process

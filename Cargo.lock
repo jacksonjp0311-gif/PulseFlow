@@ -83,7 +83,7 @@ dependencies = [
 
 [[package]]
 name = "pulseflow-governor"
-version = "0.6.0"
+version = "0.7.1"
 dependencies = [
  "serde",
  "serde_json",

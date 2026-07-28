@@ -54,7 +54,13 @@
         "additionalProperties": false
       }
     },
-    "discoveries": { "type": "array", "items": { "type": "string" } }
+    "discoveries": { "type": "array", "items": { "type": "string" } },
+    "blob_kind": { "type": "string" },
+    "system_form_factor": { "type": "string" },
+    "system_known_as": { "type": "string" },
+    "futurist_skill_mae_h5": { "type": "number" },
+    "futurist_skill_improvement": { "type": "number" },
+    "futurist_beats_persist": { "type": "boolean" }
   },
   "additionalProperties": false
 }

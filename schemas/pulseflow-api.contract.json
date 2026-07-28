@@ -89,6 +89,26 @@
       "purpose": "Validate and summarize an inactive session, persist a compact graph-ready learning dataset and analysis receipt, then delete its raw JSONL and metadata after explicit confirmation."
     },
     {
+      "method": "POST",
+      "path": "/api/session/learn",
+      "purpose": "Batch-learn inactive sessions into graph blobs: summarize, calibrate Futurist skill, persist compact points, delete raw JSONL."
+    },
+    {
+      "method": "GET",
+      "path": "/api/system",
+      "purpose": "Adaptive host profile: form factor, memory guards, stress weights, know-thy-system identity."
+    },
+    {
+      "method": "GET",
+      "path": "/api/futurist",
+      "purpose": "Multi-horizon Futurist Governor snapshot (advisory only; never widens authority)."
+    },
+    {
+      "method": "POST",
+      "path": "/api/system/refresh",
+      "purpose": "Re-probe host capacity and refresh adaptive weights and memory guards."
+    },
+    {
       "method": "GET",
       "path": "/api/learning/iterations",
       "purpose": "List compact graph-ready learning iterations retained after raw-session deletion."
