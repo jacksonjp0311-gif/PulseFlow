@@ -1,4 +1,5 @@
 pub mod adaptive;
+pub mod agent_chat;
 pub mod analytics;
 pub mod authority;
 pub mod config;

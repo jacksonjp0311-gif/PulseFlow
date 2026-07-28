@@ -105,8 +105,123 @@
     .view.active { display: block; }
     .modulation-view { position: relative; height: 100%; background-image: linear-gradient(rgba(0,0,0,.025) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,.025) 1px, transparent 1px); background-size: 28px 28px; }
     .modulation-view::before { content: ""; position: absolute; inset: 5% 8%; border: 1px dashed #c9c5bd; border-radius: 50%; }
-    .status-block { position: absolute; z-index: 5; top: 10px; left: 12px; font-size: 13px; line-height: 1.45; letter-spacing: .06em; text-transform: uppercase; width: min(340px, 42%); }
-    .clock-block { position: absolute; z-index: 5; top: 10px; right: 12px; text-align: right; font-size: 13px; line-height: 1.45; letter-spacing: .06em; text-transform: uppercase; width: min(300px, 38%); }
+    .left-hud-stack {
+      position: absolute;
+      z-index: 8;
+      top: 10px;
+      left: 12px;
+      width: min(360px, 40%);
+      max-height: calc(100% - 150px);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
+    }
+    .left-hud-stack > * { pointer-events: auto; }
+    .status-block { position: relative; z-index: 5; top: auto; left: auto; font-size: 13px; line-height: 1.45; letter-spacing: .06em; text-transform: uppercase; width: 100%; flex: 0 0 auto; }
+    .agent-block {
+      position: relative;
+      z-index: 6;
+      flex: 1 1 auto;
+      min-height: 230px;
+      max-height: 46vh;
+      display: flex;
+      flex-direction: column;
+      font-size: 13px;
+      line-height: 1.4;
+      letter-spacing: .04em;
+      overflow: hidden;
+    }
+    .agent-block .hud-title-row { text-transform: uppercase; letter-spacing: .1em; }
+    .agent-settings {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 5px;
+      margin-top: 6px;
+      padding-top: 6px;
+      border-top: 1px solid var(--soft-line);
+    }
+    .agent-settings label {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      font-size: 10px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .agent-settings label.wide { grid-column: 1 / -1; }
+    .agent-settings select,
+    .agent-settings input {
+      background: rgba(0,0,0,.45);
+      color: var(--ink);
+      border: 1px solid var(--soft-line);
+      border-radius: 5px;
+      padding: 5px 6px;
+      font-size: 12px;
+      letter-spacing: .02em;
+      text-transform: none;
+    }
+    .agent-settings-actions { grid-column: 1 / -1; display: flex; gap: 6px; flex-wrap: wrap; }
+    .agent-settings-actions .btn { padding: 5px 8px; font-size: 11px; letter-spacing: .08em; }
+    .agent-chat-log {
+      flex: 1 1 auto;
+      min-height: 90px;
+      overflow-y: auto;
+      margin-top: 6px;
+      padding: 6px;
+      border: 1px solid var(--soft-line);
+      border-radius: 8px;
+      background: rgba(0,0,0,.35);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .agent-bubble {
+      border-radius: 8px;
+      padding: 6px 8px;
+      max-width: 100%;
+      text-transform: none;
+      letter-spacing: .02em;
+      font-size: 12.5px;
+      line-height: 1.45;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .agent-bubble.user { align-self: flex-end; background: rgba(31,216,122,.16); border: 1px solid rgba(31,216,122,.35); }
+    .agent-bubble.assistant { align-self: flex-start; background: rgba(255,255,255,.06); border: 1px solid var(--soft-line); }
+    .agent-bubble.system { align-self: stretch; background: rgba(43,108,255,.12); border: 1px solid rgba(43,108,255,.3); color: var(--muted); font-size: 11px; }
+    .agent-bubble.tool { align-self: stretch; background: rgba(196,106,34,.12); border: 1px solid rgba(196,106,34,.35); color: #e8c39a; font-size: 11px; }
+    .agent-compose {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 6px;
+      margin-top: 6px;
+      align-items: end;
+    }
+    .agent-compose textarea {
+      width: 100%;
+      min-height: 52px;
+      max-height: 90px;
+      resize: vertical;
+      background: rgba(0,0,0,.45);
+      color: var(--ink);
+      border: 1px solid var(--soft-line);
+      border-radius: 6px;
+      padding: 6px 8px;
+      font-size: 12.5px;
+      letter-spacing: .02em;
+      text-transform: none;
+    }
+    .agent-compose .btn { min-height: 52px; padding: 0 12px; }
+    .agent-status-line {
+      margin-top: 4px;
+      font-size: 10px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .clock-block { position: absolute; z-index: 5; top: 10px; right: 12px; text-align: right; font-size: 13px; line-height: 1.45; letter-spacing: .06em; text-transform: uppercase; width: min(300px, 34%); }
     .hud-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -744,6 +859,7 @@
       </div>
 
       <div class="view active modulation-view" data-view="modulation">
+        <div class="left-hud-stack">
         <div class="status-block hud-card">
           <div class="hud-title-row"><span>Condition · O-plane</span><strong id="core-stability">ACQUIRING</strong></div>
           <div class="hud-grid">
@@ -763,6 +879,36 @@
             <canvas id="coherence-scope" aria-label="Raw and filtered stress comparison"></canvas>
             <div class="scope-legend"><span><i class="raw"></i>Raw drift</span><span><i class="filtered"></i>Filtered flow</span><span id="coherence-mode">OBSERVE</span></div>
           </div>
+        </div>
+        <div class="agent-block hud-card" id="cortex-agent-panel">
+          <div class="hud-title-row"><span>Cortex · Agent</span><strong id="agent-link-state">INTERLINK</strong></div>
+          <div class="agent-settings" title="Provider settings are stored locally under state/agent-secrets.json. Keys never leave this host except to the selected API.">
+            <label>Provider
+              <select id="agent-provider" aria-label="API provider"></select>
+            </label>
+            <label>Model
+              <input id="agent-model" type="text" placeholder="model id" autocomplete="off" spellcheck="false">
+            </label>
+            <label class="wide">API key
+              <input id="agent-api-key" type="password" placeholder="paste key · saved locally" autocomplete="off" spellcheck="false">
+            </label>
+            <label class="wide">Base URL (optional override)
+              <input id="agent-base-url" type="text" placeholder="https://api.x.ai/v1" autocomplete="off" spellcheck="false">
+            </label>
+            <div class="agent-settings-actions">
+              <button class="btn" data-action="agent-save-config" type="button">Save settings</button>
+              <button class="btn" data-action="agent-clear" type="button">Clear chat</button>
+            </div>
+          </div>
+          <div class="agent-chat-log" id="agent-chat-log" aria-live="polite">
+            <div class="agent-bubble system">Cortex agent is interlinked with O-plane, sessions, Futurist memory, Pulse Mesh, and ARIA. Save a provider key, then ask about plant state, rehydrate, or enable mesh.</div>
+          </div>
+          <div class="agent-compose">
+            <textarea id="agent-chat-input" rows="2" placeholder="Ask the cortex… e.g. rehydrate and summarize pressure"></textarea>
+            <button class="btn primary" data-action="agent-send" type="button">Send</button>
+          </div>
+          <div class="agent-status-line" id="agent-status-line">Provider · idle</div>
+        </div>
         </div>
         <div class="clock-block hud-card">
           <div class="hud-title-row" style="flex-direction:row-reverse"><span>Arbiter · E/C-plane</span><strong id="gcmt-regime">M_L</strong></div>
@@ -1005,6 +1151,8 @@
 (() => {
   "use strict";
   const App = {
+    agentConfig: null,
+    agentBusy: false,
     status: null,
     history: [],
     sessions: [],
@@ -1112,7 +1260,10 @@
     "stage-shadow": () => setStage("shadow"),
     "stage-bounded_adaptive": () => setStage("bounded_adaptive"),
     "stage-agent_policy": () => setStage("agent_policy"),
-    "logs-refresh": loadPersistentEvents
+    "logs-refresh": loadPersistentEvents,
+    "agent-send": sendAgentChat,
+    "agent-clear": clearAgentChat,
+    "agent-save-config": saveAgentConfig
   };
 
   function computeOscillationDamping() {
@@ -2170,11 +2321,141 @@
     const canvas=$("#heatmap");const rect=canvas.getBoundingClientRect();const ratio=window.devicePixelRatio||1;canvas.width=Math.max(1,rect.width*ratio);canvas.height=Math.max(1,rect.height*ratio);const ctx=canvas.getContext("2d");ctx.scale(ratio,ratio);const frames=App.history.slice(-Math.min(Number.isFinite(App.chartWindow) ? App.chartWindow : 120,120));const rows=[f=>f.machine.cpu_percent/100,f=>(f.machine.gpu_percent||0)/100,f=>f.machine.ram_percent/100,f=>clamp(((f.workload.input_queue||0)+(f.workload.output_queue||0))/64,0,1)];const cw=rect.width/Math.max(frames.length,1),rh=rect.height/4;ctx.clearRect(0,0,rect.width,rect.height);frames.forEach((frame,x)=>rows.forEach((getter,y)=>{const value=clamp(getter(frame),0,1);ctx.fillStyle=`rgba(0,143,76,${0.08+value*.86})`;ctx.fillRect(x*cw,y*rh,Math.max(1,cw-1),Math.max(1,rh-1));}));
   }
 
+  function appendAgentBubble(role, text) {
+    const log = $("#agent-chat-log");
+    if (!log) return;
+    const node = document.createElement("div");
+    node.className = `agent-bubble ${role}`;
+    node.textContent = text;
+    log.appendChild(node);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  function setAgentStatus(text) {
+    setText("#agent-status-line", text);
+  }
+
+  async function loadAgentConfig() {
+    const cfg = await api("/api/agent/config");
+    App.agentConfig = cfg;
+    const select = $("#agent-provider");
+    if (select) {
+      const previous = select.value;
+      select.innerHTML = "";
+      (cfg.providers || []).forEach(provider => {
+        const option = document.createElement("option");
+        option.value = provider.id;
+        option.textContent = `${provider.label}${provider.has_key ? " · key" : ""}`;
+        select.appendChild(option);
+      });
+      select.value = cfg.active_provider || previous || "spacexai";
+      if (!select.value && select.options.length) select.selectedIndex = 0;
+      select.onchange = () => {
+        const provider = (cfg.providers || []).find(item => item.id === select.value);
+        if (provider) {
+          $("#agent-model").value = provider.default_model || "";
+          $("#agent-base-url").value = provider.base_url || "";
+          $("#agent-api-key").placeholder = provider.has_key
+            ? `saved ${provider.key_preview || "••••"} · paste to replace`
+            : `paste key · env ${provider.env_hint || ""}`;
+        }
+        setAgentStatus(`Provider · ${select.value}`);
+      };
+    }
+    const active = (cfg.providers || []).find(item => item.id === cfg.active_provider) || (cfg.providers || [])[0];
+    if ($("#agent-model")) $("#agent-model").value = cfg.active_model || (active && active.default_model) || "";
+    if ($("#agent-base-url")) $("#agent-base-url").value = (active && active.base_url) || "";
+    if ($("#agent-api-key")) {
+      $("#agent-api-key").value = "";
+      $("#agent-api-key").placeholder = active && active.has_key
+        ? `saved ${active.key_preview || "••••"} · paste to replace`
+        : `paste key · env ${(active && active.env_hint) || "XAI_API_KEY"}`;
+    }
+    setText("#agent-link-state", active && active.has_key ? "KEYED" : "NEED KEY");
+    setAgentStatus(`Provider · ${cfg.active_provider || "spacexai"} · ${(cfg.tools || []).length} tools`);
+    return cfg;
+  }
+
+  async function saveAgentConfig() {
+    const provider = ($("#agent-provider") && $("#agent-provider").value) || "spacexai";
+    const body = {
+      active_provider: provider,
+      provider,
+      active_model: ($("#agent-model") && $("#agent-model").value) || "",
+      base_url: ($("#agent-base-url") && $("#agent-base-url").value) || ""
+    };
+    const key = ($("#agent-api-key") && $("#agent-api-key").value) || "";
+    if (key.trim()) body.api_key = key.trim();
+    App.agentConfig = await api("/api/agent/config", { method: "POST", body });
+    if ($("#agent-api-key")) $("#agent-api-key").value = "";
+    await loadAgentConfig();
+    toast("Cortex agent settings saved locally.");
+  }
+
+  async function clearAgentChat() {
+    await api("/api/agent/clear", { method: "POST", body: {} });
+    const log = $("#agent-chat-log");
+    if (log) {
+      log.innerHTML = "";
+      appendAgentBubble("system", "Chat cleared. Cortex memory transcript reset for this panel; plant sessions remain on disk.");
+    }
+    setAgentStatus("Chat cleared");
+    toast("Cortex chat cleared.");
+  }
+
+  async function sendAgentChat() {
+    if (App.agentBusy) return;
+    const input = $("#agent-chat-input");
+    const message = input ? input.value.trim() : "";
+    if (!message) return toast("Type a message for the cortex agent.", true);
+    App.agentBusy = true;
+    appendAgentBubble("user", message);
+    if (input) input.value = "";
+    setAgentStatus("Thinking · rehydrate tools may run…");
+    setText("#agent-link-state", "BUSY");
+    try {
+      const result = await api("/api/agent/chat", {
+        method: "POST",
+        body: {
+          message,
+          provider: ($("#agent-provider") && $("#agent-provider").value) || undefined,
+          model: ($("#agent-model") && $("#agent-model").value) || undefined
+        }
+      });
+      (result.tool_trace || []).forEach(trace => {
+        const name = trace.name || "tool";
+        const ok = trace.result && trace.result.ok !== false;
+        appendAgentBubble("tool", `${ok ? "✓" : "✗"} ${name}`);
+      });
+      appendAgentBubble("assistant", result.reply || "(empty reply)");
+      setAgentStatus(`${result.provider || "provider"} · ${result.model || "model"} · ${result.rounds || 1} round(s)`);
+      setText("#agent-link-state", "LIVE");
+      // Refresh status after mutation tools
+      setTimeout(() => pollStatus().catch(console.error), 400);
+    } catch (error) {
+      appendAgentBubble("system", `Error: ${error.message}`);
+      setAgentStatus("Error");
+      setText("#agent-link-state", "FAULT");
+      throw error;
+    } finally {
+      App.agentBusy = false;
+    }
+  }
+
   async function init() {
     bindControls();
+    const chatInput = $("#agent-chat-input");
+    if (chatInput) {
+      chatInput.addEventListener("keydown", event => {
+        if (event.key === "Enter" && !event.shiftKey) {
+          event.preventDefault();
+          sendAgentChat().catch(error => toast(error.message, true));
+        }
+      });
+    }
     window.addEventListener("resize", () => { drawCharts(); drawHeatmap(); drawCoherenceScope(); drawCornerWaveScopes(App.status||{}, (App.status&&App.status.control)||{}, (App.status&&App.status.metrics)||{}, (App.status&&App.status.telemetry)||{}); drawMemoryChart(); });
     try { App.config = await api("/api/config"); $("#config-json").textContent = JSON.stringify(App.config,null,2); } catch (error) { $("#config-json").textContent = error.message; }
-    await Promise.allSettled([loadInterlinkHandshake(), loadProcesses(), loadHistory(), loadSessions(), loadLearningIterations(), loadPersistentEvents()]);
+    await Promise.allSettled([loadInterlinkHandshake(), loadProcesses(), loadHistory(), loadSessions(), loadLearningIterations(), loadPersistentEvents(), loadAgentConfig()]);
     await pollStatus();
     setInterval(pollStatus, 1000);
     setInterval(() => { setText("#footer-uptime", formatDuration((Date.now()-App.startedAt)/1000)); setText("#footer-time", new Date().toLocaleTimeString()); },1000);

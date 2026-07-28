@@ -1,4 +1,5 @@
 use crate::{
+    agent_chat::{self, AgentConfigPatch, AgentSession, ChatRequest},
     analytics,
     authority::{transition, AuthorityAction, AuthorityState},
     config::Config,
@@ -142,13 +143,15 @@ impl Response {
 pub fn serve(bind: &str, state: Arc<RwLock<RuntimeState>>, config: Config) -> Result<(), String> {
     let listener = TcpListener::bind(bind).map_err(|error| format!("bind {bind}: {error}"))?;
     let config = Arc::new(config);
+    let agent_session = Arc::new(AgentSession::default());
     for stream in listener.incoming() {
         match stream {
             Ok(stream) => {
                 let state = Arc::clone(&state);
                 let config = Arc::clone(&config);
+                let agent_session = Arc::clone(&agent_session);
                 thread::spawn(move || {
-                    let _ = handle_connection(stream, state, config);
+                    let _ = handle_connection(stream, state, config, agent_session);
                 });
             }
             Err(error) => eprintln!("◆ HTTP accept warning: {error}"),
@@ -161,13 +164,18 @@ fn handle_connection(
     mut stream: TcpStream,
     state: Arc<RwLock<RuntimeState>>,
     config: Arc<Config>,
+    agent_session: Arc<AgentSession>,
 ) -> Result<(), String> {
     stream
         .set_read_timeout(Some(Duration::from_secs(3)))
         .map_err(|error| error.to_string())?;
     let bytes = read_request(&mut stream)?;
     let request = parse_request(&bytes)?;
-    let response = match dispatch(request, state, &config) {
+    // Agent chat may take a long provider round-trip; keep the socket alive for the write.
+    if request.path.starts_with("/api/agent/") {
+        let _ = stream.set_write_timeout(Some(Duration::from_secs(180)));
+    }
+    let response = match dispatch(request, state, &config, agent_session) {
         Ok(response) => response,
         Err(error) => Response::json(400, &json!({ "error": error }))?,
     };
@@ -178,6 +186,7 @@ fn dispatch(
     request: Request<'_>,
     state: Arc<RwLock<RuntimeState>>,
     config: &Config,
+    agent_session: Arc<AgentSession>,
 ) -> Result<Response, String> {
     match (request.method.as_str(), request.path.as_str()) {
         ("GET", "/") => Ok(Response {
@@ -287,6 +296,54 @@ fn dispatch(
             Response::json(200, &directive)
         }
         ("GET", "/api/config") => Response::json(200, config),
+        ("GET", "/api/agent/config") => Response::json(200, &agent_chat::public_config()),
+        ("POST", "/api/agent/config") => {
+            validate_json_content_type(&request.headers)?;
+            let patch: AgentConfigPatch = serde_json::from_slice(request.body)
+                .map_err(|error| format!("invalid agent config JSON: {error}"))?;
+            let report = agent_chat::apply_config_patch(patch)?;
+            if let Ok(mut locked) = state.write() {
+                let event = locked.push_event(
+                    "agent",
+                    "Cortex agent provider settings updated (keys stored locally under state/).",
+                );
+                persist_event(config, &event);
+            }
+            Response::json(200, &report)
+        }
+        ("POST", "/api/agent/chat") => {
+            validate_json_content_type(&request.headers)?;
+            let input: ChatRequest = serde_json::from_slice(request.body)
+                .map_err(|error| format!("invalid agent chat JSON: {error}"))?;
+            let reply = agent_chat::chat(input, &agent_session, &state, config)?;
+            if let Ok(mut locked) = state.write() {
+                locked.agent_bound = true;
+                let event = locked.push_event(
+                    "agent",
+                    format!(
+                        "Cortex chat via {} / {}.",
+                        reply
+                            .get("provider")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("provider"),
+                        reply
+                            .get("model")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("model")
+                    ),
+                );
+                persist_event(config, &event);
+            }
+            Response::json(200, &reply)
+        }
+        ("POST", "/api/agent/clear") => {
+            agent_session.clear();
+            Response::json(200, &json!({ "cleared": true }))
+        }
+        ("GET", "/api/agent/cortex") => {
+            let locked = state.read().map_err(|_| "state lock poisoned")?;
+            Response::json(200, &agent_chat::build_cortex_snapshot(&locked, config))
+        }
         ("GET", "/api/processes") => {
             let processes = list_processes();
             if let Ok(mut locked) = state.write() {

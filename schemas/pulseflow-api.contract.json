@@ -65,6 +65,31 @@
     },
     {
       "method": "GET",
+      "path": "/api/agent/config",
+      "purpose": "Cortex agent provider catalog, active model, masked key status, and tool list."
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/config",
+      "purpose": "Save local provider selection, model, optional base URL, and API key under state/agent-secrets.json."
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/chat",
+      "purpose": "Chat with the interlinked Cortex agent; rehydrates plant/memory context and may call tools (status, sessions, ARIA, mesh)."
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent/clear",
+      "purpose": "Clear the in-process Cortex chat transcript."
+    },
+    {
+      "method": "GET",
+      "path": "/api/agent/cortex",
+      "purpose": "Return a rehydrated cortex snapshot from live metrics, regime, futurist, and learning memory heads."
+    },
+    {
+      "method": "GET",
       "path": "/api/directive",
       "purpose": "Latest resource-homeostasis recommendation."
     },

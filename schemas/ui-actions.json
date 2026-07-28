@@ -228,6 +228,24 @@
       "kind": "http",
       "method": "GET",
       "route": "/api/ledger/tail"
+    },
+    {
+      "id": "agent-send",
+      "kind": "http",
+      "method": "POST",
+      "route": "/api/agent/chat"
+    },
+    {
+      "id": "agent-clear",
+      "kind": "http",
+      "method": "POST",
+      "route": "/api/agent/clear"
+    },
+    {
+      "id": "agent-save-config",
+      "kind": "http",
+      "method": "POST",
+      "route": "/api/agent/config"
     }
   ],
   "tabs": [
@@ -256,6 +274,11 @@
     "tune-kr",
     "tune-residue_decay",
     "tune-filter_alpha",
-    "tune-slew_per_sample"
+    "tune-slew_per_sample",
+    "agent-provider",
+    "agent-model",
+    "agent-api-key",
+    "agent-base-url",
+    "agent-chat-input"
   ]
 }
