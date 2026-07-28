@@ -69,7 +69,7 @@
     .signal-bars i:nth-child(1) { height: 5px; }.signal-bars i:nth-child(2) { height: 9px; }.signal-bars i:nth-child(3) { height: 14px; }.signal-bars i:nth-child(4) { height: 19px; }
     .record-lamp { width: 34px; height: 34px; border: 1px solid var(--line); display: grid; place-items: center; }
     .record-lamp span { width: 10px; height: 10px; background: var(--accent); display: block; }
-    .nav { display: grid; grid-template-columns: repeat(10, minmax(72px, 1fr)); gap: 7px; }
+    .nav { display: grid; grid-template-columns: repeat(11, minmax(64px, 1fr)); gap: 7px; }
     .tab {
       min-height: 44px;
       border: 1px solid var(--soft-line);
@@ -105,42 +105,84 @@
     .view.active { display: block; }
     .modulation-view { position: relative; height: 100%; background-image: linear-gradient(rgba(0,0,0,.025) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,.025) 1px, transparent 1px); background-size: 28px 28px; }
     .modulation-view::before { content: ""; position: absolute; inset: 5% 8%; border: 1px dashed #c9c5bd; border-radius: 50%; }
-    .left-hud-stack {
+    .status-block {
       position: absolute;
-      z-index: 8;
+      z-index: 5;
       top: 10px;
       left: 12px;
-      width: min(360px, 40%);
-      max-height: calc(100% - 150px);
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      pointer-events: none;
-    }
-    .left-hud-stack > * { pointer-events: auto; }
-    .status-block { position: relative; z-index: 5; top: auto; left: auto; font-size: 13px; line-height: 1.45; letter-spacing: .06em; text-transform: uppercase; width: 100%; flex: 0 0 auto; }
-    .agent-block {
-      position: relative;
-      z-index: 6;
-      flex: 1 1 auto;
-      min-height: 230px;
-      max-height: 46vh;
-      display: flex;
-      flex-direction: column;
       font-size: 13px;
-      line-height: 1.4;
-      letter-spacing: .04em;
+      line-height: 1.45;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      width: min(340px, 42%);
+    }
+    .clock-block { position: absolute; z-index: 5; top: 10px; right: 12px; text-align: right; font-size: 13px; line-height: 1.45; letter-spacing: .06em; text-transform: uppercase; width: min(300px, 34%); }
+
+    /* Floating Cortex HUD — movable, collapsible, pop-out ready */
+    .cortex-hud {
+      position: fixed;
+      z-index: 12000;
+      left: 24px;
+      top: 88px;
+      width: min(460px, calc(100vw - 32px));
+      height: min(640px, calc(100vh - 48px));
+      min-width: 320px;
+      min-height: 280px;
+      display: none;
+      flex-direction: column;
+      border: 1px solid rgba(31,216,122,.35);
+      border-radius: 14px;
+      background: rgba(12,14,16,.96);
+      box-shadow: 0 24px 64px rgba(0,0,0,.65), 0 0 0 1px rgba(255,255,255,.04);
+      backdrop-filter: blur(16px);
+      color: var(--ink);
       overflow: hidden;
     }
-    .agent-block .hud-title-row { text-transform: uppercase; letter-spacing: .1em; }
+    .cortex-hud[data-open="true"] { display: flex; }
+    .cortex-hud[data-minimized="true"] { height: auto !important; min-height: 0; }
+    .cortex-hud[data-minimized="true"] .cortex-hud-body { display: none; }
+    .cortex-hud-titlebar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      cursor: grab;
+      user-select: none;
+      background: linear-gradient(180deg, rgba(31,216,122,.14), rgba(255,255,255,.03));
+      border-bottom: 1px solid var(--soft-line);
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      font-size: 13px;
+    }
+    .cortex-hud-titlebar:active { cursor: grabbing; }
+    .cortex-hud-titlebar .title-text { flex: 1; font-weight: 700; }
+    .cortex-hud-titlebar strong { color: var(--accent); font-size: 12px; letter-spacing: .08em; }
+    .cortex-hud-controls { display: flex; gap: 5px; flex-wrap: wrap; }
+    .cortex-hud-controls .btn {
+      padding: 4px 8px;
+      font-size: 11px;
+      letter-spacing: .07em;
+      min-height: 0;
+      border-radius: 6px;
+    }
+    .cortex-hud-body {
+      flex: 1 1 auto;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      padding: 10px 12px 12px;
+      gap: 8px;
+    }
     .agent-settings {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 5px;
-      margin-top: 6px;
-      padding-top: 6px;
-      border-top: 1px solid var(--soft-line);
+      gap: 6px;
+      padding: 8px;
+      border: 1px solid var(--soft-line);
+      border-radius: 10px;
+      background: rgba(0,0,0,.28);
     }
+    .cortex-hud[data-settings="collapsed"] .agent-settings { display: none; }
     .agent-settings label {
       display: flex;
       flex-direction: column;
@@ -157,7 +199,7 @@
       color: var(--ink);
       border: 1px solid var(--soft-line);
       border-radius: 5px;
-      padding: 5px 6px;
+      padding: 6px 8px;
       font-size: 12px;
       letter-spacing: .02em;
       text-transform: none;
@@ -171,7 +213,7 @@
     .agent-key-row input {
       font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
       font-size: 13px;
-      padding: 8px 10px;
+      padding: 9px 10px;
       letter-spacing: .04em;
     }
     .agent-key-row .btn {
@@ -183,72 +225,91 @@
     .agent-key-hint {
       margin-top: 3px;
       font-size: 10px;
-      letter-spacing: .06em;
+      letter-spacing: .04em;
       text-transform: none;
       color: var(--muted);
       line-height: 1.35;
     }
-    .agent-key-hint a { color: var(--accent); }
     .agent-settings-actions { grid-column: 1 / -1; display: flex; gap: 6px; flex-wrap: wrap; }
     .agent-settings-actions .btn { padding: 5px 8px; font-size: 11px; letter-spacing: .08em; }
     .agent-chat-log {
       flex: 1 1 auto;
-      min-height: 90px;
+      min-height: 140px;
       overflow-y: auto;
-      margin-top: 6px;
-      padding: 6px;
+      padding: 8px;
       border: 1px solid var(--soft-line);
-      border-radius: 8px;
+      border-radius: 10px;
       background: rgba(0,0,0,.35);
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 7px;
     }
     .agent-bubble {
-      border-radius: 8px;
-      padding: 6px 8px;
+      border-radius: 9px;
+      padding: 8px 10px;
       max-width: 100%;
       text-transform: none;
       letter-spacing: .02em;
-      font-size: 12.5px;
-      line-height: 1.45;
+      font-size: 13px;
+      line-height: 1.5;
       white-space: pre-wrap;
       word-break: break-word;
     }
     .agent-bubble.user { align-self: flex-end; background: rgba(31,216,122,.16); border: 1px solid rgba(31,216,122,.35); }
     .agent-bubble.assistant { align-self: flex-start; background: rgba(255,255,255,.06); border: 1px solid var(--soft-line); }
-    .agent-bubble.system { align-self: stretch; background: rgba(43,108,255,.12); border: 1px solid rgba(43,108,255,.3); color: var(--muted); font-size: 11px; }
+    .agent-bubble.system { align-self: stretch; background: rgba(43,108,255,.12); border: 1px solid rgba(43,108,255,.3); color: var(--muted); font-size: 12px; }
     .agent-bubble.tool { align-self: stretch; background: rgba(196,106,34,.12); border: 1px solid rgba(196,106,34,.35); color: #e8c39a; font-size: 11px; }
     .agent-compose {
       display: grid;
       grid-template-columns: 1fr auto;
-      gap: 6px;
-      margin-top: 6px;
+      gap: 8px;
       align-items: end;
     }
     .agent-compose textarea {
       width: 100%;
-      min-height: 52px;
-      max-height: 90px;
+      min-height: 64px;
+      max-height: 140px;
       resize: vertical;
       background: rgba(0,0,0,.45);
       color: var(--ink);
       border: 1px solid var(--soft-line);
-      border-radius: 6px;
-      padding: 6px 8px;
-      font-size: 12.5px;
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 13px;
       letter-spacing: .02em;
       text-transform: none;
     }
-    .agent-compose .btn { min-height: 52px; padding: 0 12px; }
+    .agent-compose .btn { min-height: 64px; padding: 0 14px; }
     .agent-status-line {
-      margin-top: 4px;
       font-size: 10px;
       letter-spacing: .08em;
       text-transform: uppercase;
       color: var(--muted);
     }
-    .clock-block { position: absolute; z-index: 5; top: 10px; right: 12px; text-align: right; font-size: 13px; line-height: 1.45; letter-spacing: .06em; text-transform: uppercase; width: min(300px, 34%); }
+    .cortex-resize {
+      position: absolute;
+      right: 4px;
+      bottom: 4px;
+      width: 16px;
+      height: 16px;
+      cursor: nwse-resize;
+      background:
+        linear-gradient(135deg, transparent 50%, rgba(31,216,122,.55) 50%, rgba(31,216,122,.55) 60%, transparent 60%),
+        linear-gradient(135deg, transparent 70%, rgba(31,216,122,.35) 70%, rgba(31,216,122,.35) 80%, transparent 80%);
+    }
+    .cortex-tab-active { background: #1fd87a !important; color: #0c0c0c !important; }
+    body.cortex-only .shell > :not(.cortex-hud) { display: none !important; }
+    body.cortex-only .cortex-hud {
+      left: 0 !important;
+      top: 0 !important;
+      width: 100vw !important;
+      height: 100vh !important;
+      border-radius: 0;
+      min-width: 0;
+      min-height: 0;
+    }
+    body.cortex-only .cortex-hud[data-open="true"] { display: flex; }
+    body.cortex-only .cortex-resize { display: none; }
     .hud-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -834,6 +895,7 @@
     <button class="tab" data-tab="memory">Memory</button>
     <button class="tab" data-tab="futurist">Futurist</button>
     <button class="tab" data-tab="agent">Agent</button>
+    <button class="tab" type="button" data-action="cortex-hud-toggle" id="cortex-tab-btn" title="Open movable Cortex agent HUD">Cortex</button>
     <button class="tab" data-tab="analytics">Analytics</button>
     <button class="tab" data-tab="replay">Replay</button>
     <button class="tab" data-tab="logs">Logs</button>
@@ -886,7 +948,6 @@
       </div>
 
       <div class="view active modulation-view" data-view="modulation">
-        <div class="left-hud-stack">
         <div class="status-block hud-card">
           <div class="hud-title-row"><span>Condition · O-plane</span><strong id="core-stability">ACQUIRING</strong></div>
           <div class="hud-grid">
@@ -906,41 +967,6 @@
             <canvas id="coherence-scope" aria-label="Raw and filtered stress comparison"></canvas>
             <div class="scope-legend"><span><i class="raw"></i>Raw drift</span><span><i class="filtered"></i>Filtered flow</span><span id="coherence-mode">OBSERVE</span></div>
           </div>
-        </div>
-        <div class="agent-block hud-card" id="cortex-agent-panel">
-          <div class="hud-title-row"><span>Cortex · Agent</span><strong id="agent-link-state">INTERLINK</strong></div>
-          <div class="agent-settings" title="Provider settings are stored locally under state/agent-secrets.json. Keys never leave this host except to the selected API.">
-            <label>Provider
-              <select id="agent-provider" aria-label="API provider"></select>
-            </label>
-            <label>Model
-              <input id="agent-model" type="text" placeholder="model id" autocomplete="off" spellcheck="false">
-            </label>
-            <label class="wide">API key
-              <div class="agent-key-row">
-                <input id="agent-api-key" type="password" placeholder="Paste API key here, then Save key" autocomplete="off" spellcheck="false">
-                <button class="btn" type="button" id="agent-key-toggle" title="Show or hide key">Show</button>
-                <button class="btn primary" type="button" data-action="agent-save-key" title="Save key for this provider">Save key</button>
-              </div>
-              <div class="agent-key-hint" id="agent-key-hint">Keys stay on this machine. OpenRouter free models need an OPENROUTER_API_KEY.</div>
-            </label>
-            <label class="wide">Base URL (optional override)
-              <input id="agent-base-url" type="text" placeholder="https://openrouter.ai/api/v1" autocomplete="off" spellcheck="false">
-            </label>
-            <div class="agent-settings-actions">
-              <button class="btn" data-action="agent-save-config" type="button">Save all settings</button>
-              <button class="btn" data-action="agent-clear" type="button">Clear chat</button>
-            </div>
-          </div>
-          <div class="agent-chat-log" id="agent-chat-log" aria-live="polite">
-            <div class="agent-bubble system">Cortex agent is interlinked with O-plane, sessions, Futurist memory, Pulse Mesh, and ARIA. Pick NVIDIA Nemotron Ultra 550B (free) + paste your OpenRouter key, or use SpaceXAI/Grok / OpenAI.</div>
-          </div>
-          <div class="agent-compose">
-            <textarea id="agent-chat-input" rows="2" placeholder="Ask the cortex… e.g. rehydrate and summarize pressure"></textarea>
-            <button class="btn primary" data-action="agent-send" type="button">Send</button>
-          </div>
-          <div class="agent-status-line" id="agent-status-line">Provider · idle</div>
-        </div>
         </div>
         <div class="clock-block hud-card">
           <div class="hud-title-row" style="flex-direction:row-reverse"><span>Arbiter · E/C-plane</span><strong id="gcmt-regime">M_L</strong></div>
@@ -1178,6 +1204,54 @@
     <div><span>Local time</span><b id="footer-time">--</b></div>
   </footer>
 </div>
+
+<div class="cortex-hud" id="cortex-hud" data-open="false" data-settings="expanded" data-minimized="false" aria-label="Cortex agent HUD">
+  <div class="cortex-hud-titlebar" id="cortex-drag-handle">
+    <span class="title-text">Cortex · Agent</span>
+    <strong id="agent-link-state">INTERLINK</strong>
+    <div class="cortex-hud-controls">
+      <button class="btn" type="button" data-action="agent-toggle-settings" title="Show or hide provider settings">Settings</button>
+      <button class="btn" type="button" data-action="agent-popout" title="Open on another screen">Pop out</button>
+      <button class="btn" type="button" data-action="agent-minimize" title="Collapse to title bar">Min</button>
+      <button class="btn" type="button" data-action="cortex-hud-toggle" title="Close HUD">Close</button>
+    </div>
+  </div>
+  <div class="cortex-hud-body">
+    <div class="agent-settings" id="agent-settings-panel" title="Provider settings are stored locally under state/agent-secrets.json.">
+      <label>Provider
+        <select id="agent-provider" aria-label="API provider"></select>
+      </label>
+      <label>Model
+        <input id="agent-model" type="text" placeholder="model id" autocomplete="off" spellcheck="false">
+      </label>
+      <label class="wide">API key
+        <div class="agent-key-row">
+          <input id="agent-api-key" type="password" placeholder="Paste API key here, then Save key" autocomplete="off" spellcheck="false">
+          <button class="btn" type="button" id="agent-key-toggle" title="Show or hide key">Show</button>
+          <button class="btn primary" type="button" data-action="agent-save-key" title="Save key for this provider">Save key</button>
+        </div>
+        <div class="agent-key-hint" id="agent-key-hint">Keys stay on this machine. Nemotron free uses an OpenRouter key.</div>
+      </label>
+      <label class="wide">Base URL (optional override)
+        <input id="agent-base-url" type="text" placeholder="https://openrouter.ai/api/v1" autocomplete="off" spellcheck="false">
+      </label>
+      <div class="agent-settings-actions">
+        <button class="btn" data-action="agent-save-config" type="button">Save all settings</button>
+        <button class="btn" data-action="agent-clear" type="button">Clear chat</button>
+      </div>
+    </div>
+    <div class="agent-chat-log" id="agent-chat-log" aria-live="polite">
+      <div class="agent-bubble system">Floating Cortex HUD. Drag the title bar, Pop out for a second screen, and talk while you monitor Modulation. After a key is saved, settings collapse — reopen with Settings. ARIA-aware · plant-interlinked · Nemotron free ready.</div>
+    </div>
+    <div class="agent-compose">
+      <textarea id="agent-chat-input" rows="2" placeholder="Talk to cortex… e.g. rehydrate O-plane and explain ARIA verify-before-promote"></textarea>
+      <button class="btn primary" data-action="agent-send" type="button">Send</button>
+    </div>
+    <div class="agent-status-line" id="agent-status-line">Provider · idle</div>
+  </div>
+  <div class="cortex-resize" id="cortex-resize-handle" aria-hidden="true"></div>
+</div>
+
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script>
 (() => {
@@ -1185,6 +1259,8 @@
   const App = {
     agentConfig: null,
     agentBusy: false,
+    cortexHudOpen: false,
+    cortexOnly: false,
     status: null,
     history: [],
     sessions: [],
@@ -1296,7 +1372,11 @@
     "agent-send": sendAgentChat,
     "agent-clear": clearAgentChat,
     "agent-save-config": saveAgentConfig,
-    "agent-save-key": saveAgentKey
+    "agent-save-key": saveAgentKey,
+    "cortex-hud-toggle": () => toggleCortexHud(),
+    "agent-toggle-settings": toggleAgentSettings,
+    "agent-minimize": minimizeCortexHud,
+    "agent-popout": popoutCortexHud
   };
 
   function computeOscillationDamping() {
@@ -2368,6 +2448,161 @@
     setText("#agent-status-line", text);
   }
 
+  function cortexHudEl() {
+    return $("#cortex-hud");
+  }
+
+  function setCortexTabActive(open) {
+    const btn = $("#cortex-tab-btn");
+    if (btn) btn.classList.toggle("cortex-tab-active", !!open);
+  }
+
+  function openCortexHud(forceOpen) {
+    const hud = cortexHudEl();
+    if (!hud) return;
+    const next = forceOpen == null ? true : !!forceOpen;
+    hud.dataset.open = next ? "true" : "false";
+    if (next) hud.dataset.minimized = "false";
+    App.cortexHudOpen = next;
+    setCortexTabActive(next);
+    try { localStorage.setItem("pulseflow.cortexHudOpen", next ? "1" : "0"); } catch (_) {}
+  }
+
+  function toggleCortexHud() {
+    const hud = cortexHudEl();
+    if (!hud) return;
+    const open = hud.dataset.open === "true";
+    if (open && hud.dataset.minimized === "true") {
+      hud.dataset.minimized = "false";
+      return;
+    }
+    openCortexHud(!open);
+  }
+
+  function minimizeCortexHud() {
+    const hud = cortexHudEl();
+    if (!hud) return;
+    openCortexHud(true);
+    hud.dataset.minimized = hud.dataset.minimized === "true" ? "false" : "true";
+  }
+
+  function toggleAgentSettings() {
+    const hud = cortexHudEl();
+    if (!hud) return;
+    const collapsed = hud.dataset.settings === "collapsed";
+    hud.dataset.settings = collapsed ? "expanded" : "collapsed";
+    try { localStorage.setItem("pulseflow.cortexSettings", hud.dataset.settings); } catch (_) {}
+  }
+
+  function collapseSettingsAfterKey() {
+    const hud = cortexHudEl();
+    if (!hud) return;
+    hud.dataset.settings = "collapsed";
+    try { localStorage.setItem("pulseflow.cortexSettings", "collapsed"); } catch (_) {}
+  }
+
+  function popoutCortexHud() {
+    const url = new URL(window.location.href);
+    url.searchParams.set("cortex", "1");
+    const features = "popup=yes,width=520,height=780,left=80,top=60,resizable=yes,scrollbars=yes";
+    const win = window.open(url.toString(), "pulseflow-cortex-hud", features);
+    if (!win) return toast("Pop-out blocked — allow popups for this host.", true);
+    openCortexHud(false);
+    toast("Cortex HUD opened in a separate window — drag it to another screen.");
+  }
+
+  function restoreCortexHudGeometry() {
+    const hud = cortexHudEl();
+    if (!hud || App.cortexOnly) return;
+    try {
+      const raw = localStorage.getItem("pulseflow.cortexHudGeom");
+      if (!raw) return;
+      const geom = JSON.parse(raw);
+      if (Number.isFinite(geom.left)) hud.style.left = `${geom.left}px`;
+      if (Number.isFinite(geom.top)) hud.style.top = `${geom.top}px`;
+      if (Number.isFinite(geom.width)) hud.style.width = `${geom.width}px`;
+      if (Number.isFinite(geom.height)) hud.style.height = `${geom.height}px`;
+    } catch (_) {}
+  }
+
+  function persistCortexHudGeometry() {
+    const hud = cortexHudEl();
+    if (!hud || App.cortexOnly) return;
+    const rect = hud.getBoundingClientRect();
+    try {
+      localStorage.setItem("pulseflow.cortexHudGeom", JSON.stringify({
+        left: Math.round(rect.left),
+        top: Math.round(rect.top),
+        width: Math.round(rect.width),
+        height: Math.round(rect.height)
+      }));
+    } catch (_) {}
+  }
+
+  function bindCortexHudChrome() {
+    const hud = cortexHudEl();
+    const handle = $("#cortex-drag-handle");
+    const resize = $("#cortex-resize-handle");
+    if (!hud || !handle) return;
+
+    let drag = null;
+    handle.addEventListener("pointerdown", event => {
+      if (event.button !== 0) return;
+      if (event.target.closest("button")) return;
+      if (App.cortexOnly) return;
+      const rect = hud.getBoundingClientRect();
+      drag = {
+        ox: event.clientX - rect.left,
+        oy: event.clientY - rect.top
+      };
+      handle.setPointerCapture(event.pointerId);
+      event.preventDefault();
+    });
+    handle.addEventListener("pointermove", event => {
+      if (!drag) return;
+      const left = Math.max(0, Math.min(window.innerWidth - 120, event.clientX - drag.ox));
+      const top = Math.max(0, Math.min(window.innerHeight - 48, event.clientY - drag.oy));
+      hud.style.left = `${left}px`;
+      hud.style.top = `${top}px`;
+    });
+    const endDrag = event => {
+      if (!drag) return;
+      drag = null;
+      try { handle.releasePointerCapture(event.pointerId); } catch (_) {}
+      persistCortexHudGeometry();
+    };
+    handle.addEventListener("pointerup", endDrag);
+    handle.addEventListener("pointercancel", endDrag);
+
+    if (resize) {
+      let sizing = null;
+      resize.addEventListener("pointerdown", event => {
+        if (event.button !== 0 || App.cortexOnly) return;
+        const rect = hud.getBoundingClientRect();
+        sizing = { x: event.clientX, y: event.clientY, w: rect.width, h: rect.height };
+        resize.setPointerCapture(event.pointerId);
+        event.preventDefault();
+        event.stopPropagation();
+      });
+      resize.addEventListener("pointermove", event => {
+        if (!sizing) return;
+        const w = Math.max(320, sizing.w + (event.clientX - sizing.x));
+        const h = Math.max(280, sizing.h + (event.clientY - sizing.y));
+        hud.style.width = `${w}px`;
+        hud.style.height = `${h}px`;
+        hud.dataset.minimized = "false";
+      });
+      const endSize = event => {
+        if (!sizing) return;
+        sizing = null;
+        try { resize.releasePointerCapture(event.pointerId); } catch (_) {}
+        persistCortexHudGeometry();
+      };
+      resize.addEventListener("pointerup", endSize);
+      resize.addEventListener("pointercancel", endSize);
+    }
+  }
+
   function providerKeyHint(provider) {
     if (!provider) return "Keys stay on this machine under state/agent-secrets.json.";
     if (provider.id === "nemotron_free" || provider.id === "openrouter") {
@@ -2426,13 +2661,27 @@
       || (cfg.providers || [])[0];
     applyProviderFields(active, cfg);
     if ($("#agent-api-key")) $("#agent-api-key").value = "";
-    setText("#agent-link-state", active && active.has_key ? "KEYED" : "NEED KEY");
-    setAgentStatus(`Provider · ${cfg.active_provider || "spacexai"} · ${(cfg.tools || []).length} tools`);
+    const keyed = !!(active && active.has_key);
+    setText("#agent-link-state", keyed ? "KEYED" : "NEED KEY");
+    setAgentStatus(`Provider · ${cfg.active_provider || "nemotron_free"} · ${(cfg.tools || []).length} tools`);
+    // Once a key exists, collapse settings so the HUD is chat-first.
+    const hud = cortexHudEl();
+    if (hud) {
+      const stored = (() => { try { return localStorage.getItem("pulseflow.cortexSettings"); } catch (_) { return null; } })();
+      if (keyed && stored !== "expanded") {
+        hud.dataset.settings = "collapsed";
+      } else if (!keyed) {
+        hud.dataset.settings = "expanded";
+        openCortexHud(true);
+      } else if (stored === "expanded" || stored === "collapsed") {
+        hud.dataset.settings = stored;
+      }
+    }
     return cfg;
   }
 
   async function saveAgentConfig() {
-    const provider = ($("#agent-provider") && $("#agent-provider").value) || "spacexai";
+    const provider = ($("#agent-provider") && $("#agent-provider").value) || "nemotron_free";
     const body = {
       active_provider: provider,
       provider,
@@ -2440,15 +2689,17 @@
       base_url: ($("#agent-base-url") && $("#agent-base-url").value) || ""
     };
     const key = ($("#agent-api-key") && $("#agent-api-key").value) || "";
-    if (key.trim()) body.api_key = key.trim();
+    const hadKey = !!key.trim();
+    if (hadKey) body.api_key = key.trim();
     App.agentConfig = await api("/api/agent/config", { method: "POST", body });
     if ($("#agent-api-key")) $("#agent-api-key").value = "";
     await loadAgentConfig();
-    toast("Cortex agent settings saved locally.");
+    if (hadKey) collapseSettingsAfterKey();
+    toast(hadKey ? "Settings saved · key locked · settings collapsed." : "Cortex agent settings saved locally.");
   }
 
   async function saveAgentKey() {
-    const provider = ($("#agent-provider") && $("#agent-provider").value) || "spacexai";
+    const provider = ($("#agent-provider") && $("#agent-provider").value) || "nemotron_free";
     const keyInput = $("#agent-api-key");
     const key = keyInput ? keyInput.value.trim() : "";
     if (!key) return toast("Paste an API key first.", true);
@@ -2464,7 +2715,9 @@
     });
     if (keyInput) keyInput.value = "";
     await loadAgentConfig();
-    toast(`API key saved for ${provider}.`);
+    collapseSettingsAfterKey();
+    openCortexHud(true);
+    toast(`Key saved for ${provider}. Settings collapsed — chat is ready.`);
   }
 
   function bindAgentKeyUi() {
@@ -2544,8 +2797,16 @@
   }
 
   async function init() {
+    const params = new URLSearchParams(window.location.search);
+    App.cortexOnly = params.get("cortex") === "1";
+    if (App.cortexOnly) {
+      document.body.classList.add("cortex-only");
+      document.title = "PulseFlow Cortex · Agent HUD";
+    }
     bindControls();
     bindAgentKeyUi();
+    bindCortexHudChrome();
+    restoreCortexHudGeometry();
     const chatInput = $("#agent-chat-input");
     if (chatInput) {
       chatInput.addEventListener("keydown", event => {
@@ -2556,8 +2817,16 @@
       });
     }
     window.addEventListener("resize", () => { drawCharts(); drawHeatmap(); drawCoherenceScope(); drawCornerWaveScopes(App.status||{}, (App.status&&App.status.control)||{}, (App.status&&App.status.metrics)||{}, (App.status&&App.status.telemetry)||{}); drawMemoryChart(); });
-    try { App.config = await api("/api/config"); $("#config-json").textContent = JSON.stringify(App.config,null,2); } catch (error) { $("#config-json").textContent = error.message; }
+    try { App.config = await api("/api/config"); const cfgNode = $("#config-json"); if (cfgNode) cfgNode.textContent = JSON.stringify(App.config,null,2); } catch (error) { const cfgNode = $("#config-json"); if (cfgNode) cfgNode.textContent = error.message; }
     await Promise.allSettled([loadInterlinkHandshake(), loadProcesses(), loadHistory(), loadSessions(), loadLearningIterations(), loadPersistentEvents(), loadAgentConfig()]);
+    if (App.cortexOnly) {
+      openCortexHud(true);
+    } else {
+      let preferOpen = false;
+      try { preferOpen = localStorage.getItem("pulseflow.cortexHudOpen") === "1"; } catch (_) {}
+      const needKey = !(App.agentConfig && (App.agentConfig.providers || []).some(p => p.id === App.agentConfig.active_provider && p.has_key));
+      openCortexHud(preferOpen || needKey);
+    }
     await pollStatus();
     setInterval(pollStatus, 1000);
     setInterval(() => { setText("#footer-uptime", formatDuration((Date.now()-App.startedAt)/1000)); setText("#footer-time", new Date().toLocaleTimeString()); },1000);

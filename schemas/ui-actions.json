@@ -252,6 +252,22 @@
       "kind": "http",
       "method": "POST",
       "route": "/api/agent/config"
+    },
+    {
+      "id": "cortex-hud-toggle",
+      "kind": "local"
+    },
+    {
+      "id": "agent-toggle-settings",
+      "kind": "local"
+    },
+    {
+      "id": "agent-minimize",
+      "kind": "local"
+    },
+    {
+      "id": "agent-popout",
+      "kind": "local"
     }
   ],
   "tabs": [

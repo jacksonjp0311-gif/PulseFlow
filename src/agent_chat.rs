@@ -212,8 +212,8 @@ pub fn load_secrets() -> AgentSecrets {
     let path = secrets_path();
     if !path.exists() {
         return AgentSecrets {
-            active_provider: "spacexai".into(),
-            active_model: String::new(),
+            active_provider: "nemotron_free".into(),
+            active_model: "nvidia/nemotron-3-ultra-550b-a55b:free".into(),
             keys: HashMap::new(),
             models: HashMap::new(),
             base_urls: HashMap::new(),
@@ -351,7 +351,7 @@ pub fn public_config() -> Value {
         })
         .collect();
     let active = if secrets.active_provider.is_empty() {
-        "spacexai".to_string()
+        "nemotron_free".to_string()
     } else {
         secrets.active_provider.clone()
     };
@@ -375,7 +375,7 @@ pub fn apply_config_patch(patch: AgentConfigPatch) -> Result<Value, String> {
         secrets.active_provider = p;
     }
     if secrets.active_provider.is_empty() {
-        secrets.active_provider = "spacexai".into();
+        secrets.active_provider = "nemotron_free".into();
     }
     let key_provider = patch
         .provider
@@ -563,38 +563,56 @@ fn tools_openai_schema() -> Value {
 
 fn system_prompt(cortex: &Value) -> String {
     format!(
-        r#"You are the PulseFlow Cortex Agent — an embedded operator copilot interlinked with this local Windows PulseFlow Governor.
+        r#"You are the PulseFlow Cortex Agent — a calm, precise operator copilot for this local Windows PulseFlow Governor.
 
-## Identity
-- You sit next to Condition · O-plane in the modulation HUD.
-- You are wired into live host telemetry, authority lattice, Pulse Mesh, sessions, Futurist foresight, and ARIA verify-before-promote discipline.
-- You do NOT control clocks, voltages, firmware, or fan curves. Governance is bounded process QoS (Eco / Normal / ThermalProtect) and observation.
+## Voice
+- Speak clearly and conversationally, like a senior systems engineer on the headset.
+- Prefer plain language first, then the exact metric or lattice term.
+- Be warm but not fluffy. No marketing speak. No claiming certainty without evidence.
+- When explaining ARIA or plant state, use short spoken paragraphs (2–4 sentences) or tight bullets.
+- Acknowledge what you know vs what you still need tools for.
+
+## Identity & interlink
+- You live in a floating Cortex HUD the operator can drag to another screen while they watch Modulation.
+- You are interlinked with live host telemetry, Condition · O-plane, authority lattice, Pulse Mesh, sessions, Futurist foresight, learning memory, and ARIA.
+- You do NOT control clocks, voltages, firmware, or fan curves. Actuation is bounded process QoS (Eco / Normal / ThermalProtect) plus observation.
 
 ## Cortex rehydration
 On non-trivial questions, call `rehydrate_cortex` and/or `get_system_status` before answering so you speak from plant truth, not guesswork.
-Cortex snapshot available at conversation start (may be slightly stale — refresh with tools):
+Starter cortex snapshot (may be slightly stale — refresh with tools):
 {cortex}
 
 ## Memory
-- Observation sessions are JSONL plant memory (X, A, R, Y).
+- Observation sessions are JSONL plant memory Dₜ = (Xₜ, Aₜ, Rₜ, Yₜ₊Δ).
 - Learning datasets / graph blobs are compacted long-term memory after Learn All.
-- Use list_sessions / get_session_summary when the operator asks about past runs.
-- Oscillation coherence lives under O-plane: how consistently raw load follows filtered control.
+- Use list_sessions / get_session_summary for past runs.
+- Oscillation coherence (O-plane) = how consistently raw load follows filtered control.
 
-## ARIA
-- ARIA means verify-before-promote: discover → orient → verify contracts → compile/test → smoke → promote only on zero failures.
-- Use aria_overview and aria_manifest_status when asked about promotion, install integrity, or lattice status.
-- Never claim a promotion succeeded without tool evidence.
+## ARIA (know this deeply)
+ARIA is the verification doctrine and machine-readable connection surface — not a magic glyph and not automatic authority.
+Lifecycle: discover → orient → verify → align → propose.
+Promotion lattice (verify-before-promote):
+  discover aria identity → orient human/machine contracts → verify authority starts as none →
+  content-addressed manifest → PowerShell 5.1 ASCII/parser/semantic string boundaries →
+  repository lattice → config + schemas + API contract →
+  assert UI actions ↔ JS handlers ↔ Rust routes →
+  rustfmt check → compile all targets → test controller/analytics/storage/replay/ui.contract →
+  release build → localhost verify instance → exercise HTTP operator actions →
+  retain verification receipt + handshake digest → promote ONLY when every stage returns zero.
+A failed gate is a deterministic fracture. Never hide failure as success.
+A rendered button is incomplete unless it exists in HTML, handler map, JSON contract, and Rust route.
+Use tools `aria_overview` and `aria_manifest_status` when asked about ARIA, promotion, install integrity, or lattice status.
+Never claim a promotion succeeded without tool evidence.
 
 ## Tools
-- Prefer tools for status, sessions, ARIA, mesh enable, mode changes.
-- Mutation tools (enable_pulse_mesh, disconnect_governance, set_mode) change the live plant — confirm intent briefly in prose after calling them.
-- Be concise, operational, and honest about uncertainty.
+- Prefer tools for status, sessions, ARIA, mesh, mode.
+- Mutation tools change the live plant — say what you did in one clear sentence after.
+- If a tool fails, say so and suggest the next honest step.
 
-## Style
-- Short paragraphs or tight bullets.
-- Name concrete metrics (RAM%, Eco duty, coherence, mesh targets) when relevant.
-- Default provider preference is SpaceXAI/Grok when discussing model choice, but honor the operator's configured provider.
+## Style checklist
+- Name concrete numbers when useful (RAM%, coherence, Eco duty, mesh targets, zone/regime).
+- Honor the operator's configured provider (often Nemotron free via OpenRouter).
+- If asked to "speak" or run a verbal test, answer as if spoken aloud: clear rhythm, no walls of jargon.
 "#
     )
 }
@@ -944,7 +962,7 @@ pub fn chat(
         .map(str::trim)
         .filter(|s| !s.is_empty())
         .unwrap_or(if secrets.active_provider.is_empty() {
-            "spacexai"
+            "nemotron_free"
         } else {
             secrets.active_provider.as_str()
         })
@@ -1090,11 +1108,14 @@ pub fn chat(
                 .and_then(|v| v.as_str())
                 .unwrap_or("")
                 .to_string();
-            let arg_str = call
-                .pointer("/function/arguments")
-                .and_then(|v| v.as_str())
-                .unwrap_or("{}");
-            let args: Value = serde_json::from_str(arg_str).unwrap_or_else(|_| json!({}));
+            let args: Value = match call.pointer("/function/arguments") {
+                Some(Value::String(s)) => {
+                    serde_json::from_str(s).unwrap_or_else(|_| json!({}))
+                }
+                Some(Value::Object(map)) => Value::Object(map.clone()),
+                Some(other) => other.clone(),
+                None => json!({}),
+            };
             let result = execute_tool(&name, &args, state, config);
             tool_trace.push(json!({
                 "id": id,
@@ -1137,33 +1158,76 @@ pub fn chat(
 }
 
 /// OpenAI-compatible chat completions via PowerShell (Windows-native TLS, no extra crates).
+/// Retries without tools if the provider rejects the tools schema (common on free routes).
 fn openai_chat_completions(base_url: &str, api_key: &str, body: &Value) -> Result<Value, String> {
-    let url = format!(
-        "{}/chat/completions",
-        base_url.trim_end_matches('/')
-    );
+    match openai_chat_completions_once(base_url, api_key, body) {
+        Ok(v) => Ok(v),
+        Err(first_err) => {
+            let has_tools = body.get("tools").is_some();
+            if !has_tools {
+                return Err(first_err);
+            }
+            let mut stripped = body.clone();
+            if let Some(obj) = stripped.as_object_mut() {
+                obj.remove("tools");
+                obj.remove("tool_choice");
+            }
+            match openai_chat_completions_once(base_url, api_key, &stripped) {
+                Ok(v) => Ok(v),
+                Err(second) => Err(format!(
+                    "provider failed with tools ({first_err}); retry without tools also failed ({second})"
+                )),
+            }
+        }
+    }
+}
+
+fn openai_chat_completions_once(
+    base_url: &str,
+    api_key: &str,
+    body: &Value,
+) -> Result<Value, String> {
+    let url = format!("{}/chat/completions", base_url.trim_end_matches('/'));
     let body_text = serde_json::to_string(body).map_err(|e| e.to_string())?;
-    // Write body to temp file to avoid command-line length limits
-    let tmp = std::env::temp_dir().join(format!("pulseflow-agent-{}.json", now_ms()));
-    fs::write(&tmp, &body_text).map_err(|e| format!("temp body write: {e}"))?;
-    let tmp_out = std::env::temp_dir().join(format!("pulseflow-agent-out-{}.json", now_ms()));
+    let stamp = now_ms();
+    let tmp = std::env::temp_dir().join(format!("pulseflow-agent-{stamp}.json"));
+    let tmp_out = std::env::temp_dir().join(format!("pulseflow-agent-out-{stamp}.json"));
+    let tmp_code = std::env::temp_dir().join(format!("pulseflow-agent-code-{stamp}.txt"));
+    fs::write(&tmp, body_text.as_bytes()).map_err(|e| format!("temp body write: {e}"))?;
 
     let script = format!(
         r#"
-$ErrorActionPreference = 'Stop'
+$ErrorActionPreference = 'Continue'
+$outPath = '{out_path}'
+$codePath = '{code_path}'
 try {{
   $headers = @{{
     'Authorization' = 'Bearer {key}'
-    'Content-Type' = 'application/json'
+    'Content-Type' = 'application/json; charset=utf-8'
     'HTTP-Referer' = 'http://127.0.0.1:8791'
     'X-Title' = 'PulseFlow Cortex Agent'
   }}
-  $body = Get-Content -Raw -LiteralPath '{body_path}'
-  $resp = Invoke-RestMethod -Method Post -Uri '{url}' -Headers $headers -Body $body -TimeoutSec 120
-  $resp | ConvertTo-Json -Depth 40 | Set-Content -LiteralPath '{out_path}' -Encoding utf8
-  exit 0
+  $bodyBytes = [System.IO.File]::ReadAllBytes('{body_path}')
+  $resp = Invoke-WebRequest -Method Post -Uri '{url}' -Headers $headers -Body $bodyBytes -TimeoutSec 150 -UseBasicParsing
+  [System.IO.File]::WriteAllText($codePath, [string]$resp.StatusCode)
+  [System.IO.File]::WriteAllText($outPath, $resp.Content)
+  if ($resp.StatusCode -ge 200 -and $resp.StatusCode -lt 300) {{ exit 0 }} else {{ exit 1 }}
 }} catch {{
-  $_.Exception.Message | Set-Content -LiteralPath '{out_path}' -Encoding utf8
+  $status = 0
+  $text = $_.Exception.Message
+  try {{
+    if ($_.Exception.Response -ne $null) {{
+      $status = [int]$_.Exception.Response.StatusCode
+      $stream = $_.Exception.Response.GetResponseStream()
+      if ($stream -ne $null) {{
+        $reader = New-Object System.IO.StreamReader($stream)
+        $text = $reader.ReadToEnd()
+        $reader.Close()
+      }}
+    }}
+  }} catch {{}}
+  [System.IO.File]::WriteAllText($codePath, [string]$status)
+  [System.IO.File]::WriteAllText($outPath, $text)
   exit 1
 }}
 "#,
@@ -1171,6 +1235,7 @@ try {{
         body_path = escape_ps_single(&tmp.to_string_lossy()),
         url = escape_ps_single(&url),
         out_path = escape_ps_single(&tmp_out.to_string_lossy()),
+        code_path = escape_ps_single(&tmp_code.to_string_lossy()),
     );
 
     let result = Command::new("powershell")
@@ -1186,23 +1251,26 @@ try {{
     let _ = fs::remove_file(&tmp);
     let output = result.map_err(|e| format!("powershell spawn failed: {e}"))?;
     let out_text = fs::read_to_string(&tmp_out).unwrap_or_default();
+    let code_text = fs::read_to_string(&tmp_code).unwrap_or_default();
     let _ = fs::remove_file(&tmp_out);
+    let _ = fs::remove_file(&tmp_code);
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
         return Err(format!(
-            "provider HTTP failed: {} {}",
-            out_text.trim(),
+            "HTTP {} · {} {}",
+            code_text.trim(),
+            out_text.chars().take(500).collect::<String>(),
             stderr.trim()
         ));
     }
     if out_text.trim().is_empty() {
         return Err("provider returned empty body".into());
     }
-    serde_json::from_str(&out_text).map_err(|e| {
+    serde_json::from_str(out_text.trim_start_matches('\u{feff}')).map_err(|e| {
         format!(
             "provider JSON parse error: {e}; body starts: {}",
-            out_text.chars().take(200).collect::<String>()
+            out_text.chars().take(220).collect::<String>()
         )
     })
 }
