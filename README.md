@@ -13,7 +13,7 @@
   [![Rust 1.75+](https://img.shields.io/badge/Rust-1.75%2B-111820?logo=rust&logoColor=white)](Cargo.toml)
   [![Windows Governor](https://img.shields.io/badge/Windows-process%20QoS-16c784?logo=windows11&logoColor=white)](#safety-is-the-feature)
   [![License: MIT](https://img.shields.io/badge/License-MIT-d9a441.svg)](LICENSE)
-  [![Version](https://img.shields.io/badge/version-0.5.0-16c784.svg)](Cargo.toml)
+  [![Version](https://img.shields.io/badge/version-0.6.0-16c784.svg)](Cargo.toml)
 </div>
 
 <p align="center">
@@ -122,10 +122,28 @@ pressure:
 P_t = \frac{1}{2}\max_i(z_{i,t}) + \frac{1}{2N}\sum_{i=1}^{N} z_{i,t}
 \]
 
-Across a window \(W\), net accumulation and residual burden are:
+The recording that followed exposed a deeper rule: scalar pressure can look
+flat while pressure migrates between resources. CPU may recover at the same
+time RAM accumulates. PulseFlow therefore preserves the vector displacement:
 
 \[
-A_W = \max(0, P_{\mathrm{last}} - P_{\mathrm{first}}), \qquad
+\mathbf{d}_W=\mathbf{z}_{\mathrm{last}}-\mathbf{z}_{\mathrm{first}}
+\]
+
+\[
+A_W=\frac{1}{N}\sum_i\max(d_i,0),\qquad
+D_W=\frac{1}{N}\sum_i\max(-d_i,0)
+\]
+
+\[
+T_W=\min(A_W,D_W),\qquad N_W=A_W-D_W
+\]
+
+\(T_W\) is **pressure transduction**: simultaneous accumulation and
+dissipation in different resource channels. \(N_W\) is net vector pressure.
+Residual burden remains:
+
+\[
 L_W = \frac{1}{|W|}\sum_{t \in W}|r_t|
 \]
 
@@ -137,26 +155,67 @@ S_H(W) = \operatorname{clip}\left(
 \right)
 \]
 
-The first session evaluated with this model produced:
+This is the missing concept beneath a single “edge” metric: the state is not
+only high or low; pressure has direction, location, migration, and
+resource-specific recovery time. The selected PID remains an authority
+boundary, never an assumed causal boundary.
+
+## Iteration memory: learn, compact, delete raw
+
+PulseFlow v0.6.0 turns every analyzed recording into a compact, graph-ready
+learning iteration before deleting the raw JSONL:
+
+```text
+raw aligned frames
+    -> vector-pressure analysis
+    -> compact normalized graph points + discoveries + checksum
+    -> analysis receipt
+    -> raw JSONL deletion
+```
+
+The dashboard's **Memory** view can graph any two retained signals across an
+iteration, including CPU, RAM, GPU, thermal state, stress, ecosystem pressure,
+latent pressure, slack, and recovery balance. This preserves evidence useful
+for future comparisons without preserving every high-frequency frame.
+
+Repository-scale memory is provided by the vendored
+[Cortex](tools/cortex/README.md) v3 engine. Cortex indexes source, decisions,
+discoveries, and compact iteration references. It does **not** receive runtime
+control authority and is not the frame-level telemetry database.
+
+```powershell
+.\scripts\Initialize-PulseFlow-Cortex.ps1 -RunTests
+.\scripts\Sync-PulseFlow-Cortex.ps1
+```
+
+The first command initializes local repository memory after cloning. The
+second remembers newly compacted PulseFlow iterations and consolidates them
+into provenance-bearing discovery cards. The vendored source is pinned in
+[`tools/cortex/PULSEFLOW_VENDOR.json`](tools/cortex/PULSEFLOW_VENDOR.json).
+
+The 86-frame normal-activity iteration that forced the vector correction
+produced:
 
 | Observable | Result |
 |---|---:|
-| Ecosystem pressure | 0.578 |
-| Latent pressure | 0.044 |
-| Homeostatic slack | 0.378 |
-| Pressure momentum | +0.0219 per minute |
-| Recovery balance | -0.055 |
-| Resource coupling | 0.228 |
-| Detected pulse recovery half-life | 2.10 seconds |
-| Selected Edge PID share of used host memory | 3.13% |
+| Ecosystem pressure | 0.5803 |
+| Vector accumulation \(A_W\) | 0.0112 |
+| Vector dissipation \(D_W\) | 0.0200 |
+| Pressure transduction \(T_W\) | 0.0112 |
+| Net vector pressure \(N_W\) | -0.0088 |
+| Latent pressure | 0.0220 |
+| Homeostatic slack | 0.3977 |
+| CPU / RAM / GPU momentum | +0.0379 / +0.0072 / -0.0807 per minute |
+| CPU / GPU recovery half-life | 2.075 / 1.084 seconds |
+| Selected Edge PID share of used host memory | 4.49% |
 
 This is the central finding: the selected process accounted for only a small
 part of the machine's resident-memory state. The target remained a valid
 authority boundary, but it was not an adequate causal model of the computer.
-The positive pressure momentum and slightly negative recovery balance showed
-that accumulation was narrowly outrunning recovery even though individual CPU
-pulses recovered quickly. One short session is an empirical anchor, not
-validation.
+The negative net vector value alone would suggest recovery, but transduction
+shows that this is incomplete: GPU pressure dissipated while CPU and RAM ended
+higher. RAM accumulation survived inside an apparently recovering aggregate.
+One short session is an empirical anchor, not validation.
 
 This is deliberately conservative. High instantaneous headroom is discounted
 when pressure is still accumulating or prediction residue remains unresolved.
@@ -343,7 +402,7 @@ boundary is met and the operator selects the appropriate learning stage.
 
 The local web console includes:
 
-- Telemetry, modulation, dataset, agent, analytics, replay, logs, and
+- Telemetry, modulation, dataset, memory, agent, analytics, replay, logs, and
   configuration views
 - Live raw-versus-filtered stress scopes
 - Pressure forecast and confidence
@@ -377,6 +436,8 @@ PulseFlow binds to loopback by default: `127.0.0.1:8791`.
 | `GET` | `/health` | Lightweight readiness check |
 | `GET` | `/api/status` | Complete live runtime state |
 | `GET` | `/api/sessions` | Saved session metadata |
+| `GET` | `/api/learning/iterations` | Compact retained iteration summaries |
+| `GET` | `/api/learning/dataset/{id}` | Graph-ready iteration evidence |
 | `GET` | `/api/session/{id}?limit=N` | Historical observation frames |
 | `GET` | `/api/summary/{id}` | Full-session derived metrics |
 | `GET` | `/api/interlink` | Truth-derived authority verification |
@@ -428,8 +489,8 @@ It validates:
 - optimized release build
 - live HTTP smoke behavior
 
-The current promoted build passes **26 tests** plus the full live verification
-gate.
+The current candidate passes **30 PulseFlow tests** plus **33 vendored Cortex
+tests** and the full live verification gate.
 
 ## Repository map
 

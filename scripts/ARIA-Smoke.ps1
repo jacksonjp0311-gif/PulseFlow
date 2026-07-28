@@ -187,6 +187,14 @@ try {
         baseline_session_id = $Baseline
         candidate_session_id = $Candidate
     } | Out-Null
+    $Compaction = Invoke-ApiPost -Path '/api/session/compact' -Payload @{
+        session_id = $Baseline
+        confirm_delete_raw = $true
+    }
+    if (-not $Compaction.raw_deleted) { throw 'Compaction did not confirm raw deletion.' }
+    $Iterations = @(Invoke-ApiGet -Path '/api/learning/iterations')
+    if ($Iterations.Count -lt 1) { throw 'Compaction did not create a learning iteration.' }
+    Invoke-ApiGet -Path ('/api/learning/dataset/{0}' -f $BaselineSegment) | Out-Null
 
     $RootPage = Invoke-WebRequest -Uri (New-ApiUri -Path '/') -UseBasicParsing
     if ($RootPage.Content -notmatch 'PULSEFLOW GOVERNOR') {

@@ -86,7 +86,17 @@
     {
       "method": "POST",
       "path": "/api/session/compact",
-      "purpose": "Validate and summarize an inactive session, persist an analysis receipt, then delete its raw JSONL and metadata after explicit confirmation."
+      "purpose": "Validate and summarize an inactive session, persist a compact graph-ready learning dataset and analysis receipt, then delete its raw JSONL and metadata after explicit confirmation."
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/iterations",
+      "purpose": "List compact graph-ready learning iterations retained after raw-session deletion."
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/dataset/{iteration_id}",
+      "purpose": "Read one compact iteration dataset, vector-pressure summary, and bounded discoveries."
     },
     {
       "method": "POST",

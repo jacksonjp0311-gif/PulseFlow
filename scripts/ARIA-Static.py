@@ -159,7 +159,12 @@ def main() -> int:
         fail("repository lattice: " + ", ".join(missing))
     passed("repository lattice")
 
-    json_files = sorted(ROOT.rglob("*.json"))
+    generated_roots = {"state", "target", "dist", ".cortex", "tools"}
+    json_files = sorted(
+        path
+        for path in ROOT.rglob("*.json")
+        if not generated_roots.intersection(path.relative_to(ROOT).parts)
+    )
     for path in json_files:
         json.loads(path.read_text(encoding="utf-8"))
     passed(f"JSON parse ({len(json_files)} documents)")

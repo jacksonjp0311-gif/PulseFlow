@@ -1,8 +1,8 @@
 use crate::{
     config::AnalyticsConfig,
-    model::{ObservationFrame, QosLevel, RuntimeMetrics},
+    model::{LearningGraphPoint, ObservationFrame, QosLevel, RuntimeMetrics},
 };
-use std::collections::VecDeque;
+use std::collections::{BTreeMap, VecDeque};
 
 #[derive(Debug, Clone)]
 struct MetricSample {
@@ -260,6 +260,12 @@ impl AnalyticsEngine {
             resource_coupling: homeostasis.resource_coupling,
             recovery_half_life_seconds: homeostasis.recovery_half_life_seconds,
             target_memory_share: homeostasis.target_memory_share,
+            resource_momentum_per_minute: homeostasis.resource_momentum_per_minute,
+            resource_recovery_half_life_seconds: homeostasis.resource_recovery_half_life_seconds,
+            vector_accumulation: homeostasis.vector_accumulation,
+            vector_dissipation: homeostasis.vector_dissipation,
+            pressure_transduction: homeostasis.pressure_transduction,
+            net_vector_pressure: homeostasis.net_vector_pressure,
         }
     }
 }
@@ -288,7 +294,7 @@ struct HomeostasisSample {
     process_memory_mb: Option<f64>,
 }
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Default)]
 struct HomeostasisMetrics {
     ecosystem_pressure: f64,
     latent_pressure: f64,
@@ -300,6 +306,12 @@ struct HomeostasisMetrics {
     resource_coupling: Option<f64>,
     recovery_half_life_seconds: Option<f64>,
     target_memory_share: Option<f64>,
+    resource_momentum_per_minute: BTreeMap<String, f64>,
+    resource_recovery_half_life_seconds: BTreeMap<String, f64>,
+    vector_accumulation: f64,
+    vector_dissipation: f64,
+    pressure_transduction: f64,
+    net_vector_pressure: f64,
 }
 
 fn homeostasis_metrics(samples: &[HomeostasisSample]) -> HomeostasisMetrics {
@@ -318,13 +330,40 @@ fn homeostasis_metrics(samples: &[HomeostasisSample]) -> HomeostasisMetrics {
     } else {
         0.0
     };
+    let channels = resource_channels(samples);
+    let mut resource_momentum_per_minute = BTreeMap::new();
+    let mut resource_recovery_half_life_seconds = BTreeMap::new();
+    let mut accumulation = 0.0;
+    let mut dissipation = 0.0;
+    for (name, values) in &channels {
+        if values.len() < 2 {
+            continue;
+        }
+        let displacement = values.last().copied().unwrap_or(0.0) - values[0];
+        accumulation += displacement.max(0.0);
+        dissipation += (-displacement).max(0.0);
+        let momentum = if duration_seconds > 0.0 {
+            displacement / duration_seconds * 60.0
+        } else {
+            0.0
+        };
+        resource_momentum_per_minute.insert(name.clone(), momentum);
+        if let Some(half_life) = recovery_half_life_series(samples, values) {
+            resource_recovery_half_life_seconds.insert(name.clone(), half_life);
+        }
+    }
+    let channel_count = channels.len().max(1) as f64;
+    let vector_accumulation = (accumulation / channel_count).clamp(0.0, 1.0);
+    let vector_dissipation = (dissipation / channel_count).clamp(0.0, 1.0);
+    let pressure_transduction = vector_accumulation.min(vector_dissipation);
+    let net_vector_pressure = vector_accumulation - vector_dissipation;
     let residue_burden = mean(
         &samples
             .iter()
             .map(|sample| sample.residue_memory.abs())
             .collect::<Vec<_>>(),
     );
-    let latent_pressure = (net_change.max(0.0) + residue_burden).clamp(0.0, 1.0);
+    let latent_pressure = (vector_accumulation + residue_burden).clamp(0.0, 1.0);
     let homeostatic_slack = (1.0 - mean_pressure - latent_pressure).clamp(0.0, 1.0);
 
     let mut recovery_rates = Vec::new();
@@ -403,7 +442,75 @@ fn homeostasis_metrics(samples: &[HomeostasisSample]) -> HomeostasisMetrics {
         resource_coupling,
         recovery_half_life_seconds,
         target_memory_share,
+        resource_momentum_per_minute,
+        resource_recovery_half_life_seconds,
+        vector_accumulation,
+        vector_dissipation,
+        pressure_transduction,
+        net_vector_pressure,
     }
+}
+
+fn resource_channels(samples: &[HomeostasisSample]) -> BTreeMap<String, Vec<f64>> {
+    let mut channels = BTreeMap::new();
+    channels.insert(
+        "cpu".into(),
+        samples
+            .iter()
+            .map(|sample| (sample.cpu_percent / 100.0).clamp(0.0, 1.0))
+            .collect(),
+    );
+    channels.insert(
+        "ram".into(),
+        samples
+            .iter()
+            .map(|sample| (sample.ram_percent / 100.0).clamp(0.0, 1.0))
+            .collect(),
+    );
+    let optional = [
+        (
+            "gpu",
+            samples
+                .iter()
+                .map(|sample| {
+                    sample
+                        .gpu_percent
+                        .map(|value| (value / 100.0).clamp(0.0, 1.0))
+                })
+                .collect::<Option<Vec<_>>>(),
+        ),
+        (
+            "thermal",
+            samples
+                .iter()
+                .map(|sample| {
+                    sample
+                        .temperature_c
+                        .map(|value| ((value - 40.0) / 45.0).clamp(0.0, 1.0))
+                })
+                .collect::<Option<Vec<_>>>(),
+        ),
+    ];
+    for (name, values) in optional {
+        if let Some(values) = values {
+            channels.insert(name.into(), values);
+        }
+    }
+    channels.insert(
+        "queue".into(),
+        samples
+            .iter()
+            .map(|sample| (sample.queue / 64.0).clamp(0.0, 1.0))
+            .collect(),
+    );
+    channels.insert(
+        "latency".into(),
+        samples
+            .iter()
+            .map(|sample| (sample.latency_ms / 2_000.0).clamp(0.0, 1.0))
+            .collect(),
+    );
+    channels
 }
 
 fn ecosystem_pressure(sample: &HomeostasisSample) -> f64 {
@@ -447,6 +554,10 @@ fn pearson_correlation(left: &[f64], right: &[f64]) -> Option<f64> {
 }
 
 fn recovery_half_life(samples: &[HomeostasisSample], pressures: &[f64]) -> Option<f64> {
+    recovery_half_life_series(samples, pressures)
+}
+
+fn recovery_half_life_series(samples: &[HomeostasisSample], pressures: &[f64]) -> Option<f64> {
     if samples.len() < 8 || samples.len() != pressures.len() {
         return None;
     }
@@ -967,7 +1078,66 @@ pub fn summarize_session(
         resource_coupling: homeostasis.resource_coupling,
         recovery_half_life_seconds: homeostasis.recovery_half_life_seconds,
         target_memory_share: homeostasis.target_memory_share,
+        resource_momentum_per_minute: homeostasis.resource_momentum_per_minute,
+        resource_recovery_half_life_seconds: homeostasis.resource_recovery_half_life_seconds,
+        vector_accumulation: homeostasis.vector_accumulation,
+        vector_dissipation: homeostasis.vector_dissipation,
+        pressure_transduction: homeostasis.pressure_transduction,
+        net_vector_pressure: homeostasis.net_vector_pressure,
     }
+}
+
+pub fn learning_graph_points(
+    frames: &[ObservationFrame],
+    maximum_points: usize,
+) -> Vec<LearningGraphPoint> {
+    if frames.is_empty() || maximum_points == 0 {
+        return Vec::new();
+    }
+    let stride = frames.len().div_ceil(maximum_points).max(1);
+    let start_ms = frames[0].timestamp_ms;
+    frames
+        .iter()
+        .enumerate()
+        .filter(|(index, _)| index % stride == 0 || *index + 1 == frames.len())
+        .map(|(index, frame)| {
+            let window_start = index.saturating_sub(119);
+            let samples: Vec<_> = frames[window_start..=index]
+                .iter()
+                .map(|item| HomeostasisSample {
+                    timestamp_ms: item.timestamp_ms,
+                    cpu_percent: item.machine.cpu_percent,
+                    ram_percent: item.machine.ram_percent,
+                    gpu_percent: item.machine.gpu_percent,
+                    temperature_c: item.machine.gpu_temperature_c,
+                    queue: (item.workload.input_queue + item.workload.output_queue) as f64,
+                    latency_ms: item.outcome.latency_ms,
+                    residue_memory: item.controller.residue_memory,
+                    ram_used_gb: item.machine.ram_used_gb,
+                    process_memory_mb: item.machine.process_memory_mb,
+                })
+                .collect();
+            let homeostasis = homeostasis_metrics(&samples);
+            LearningGraphPoint {
+                offset_ms: frame.timestamp_ms.saturating_sub(start_ms) as u64,
+                cpu: (frame.machine.cpu_percent / 100.0).clamp(0.0, 1.0),
+                ram: (frame.machine.ram_percent / 100.0).clamp(0.0, 1.0),
+                gpu: frame
+                    .machine
+                    .gpu_percent
+                    .map(|value| (value / 100.0).clamp(0.0, 1.0)),
+                thermal: frame
+                    .machine
+                    .gpu_temperature_c
+                    .map(|value| ((value - 40.0) / 45.0).clamp(0.0, 1.0)),
+                stress: frame.controller.filtered_stress.clamp(0.0, 1.0),
+                ecosystem_pressure: homeostasis.ecosystem_pressure,
+                latent_pressure: homeostasis.latent_pressure,
+                homeostatic_slack: homeostasis.homeostatic_slack,
+                recovery_balance: homeostasis.recovery_balance,
+            }
+        })
+        .collect()
 }
 
 pub fn compare_sessions(

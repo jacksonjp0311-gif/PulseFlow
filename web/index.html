@@ -301,7 +301,7 @@
     @media (max-width:1300px) { .coherence-scope-card { width:34%; } .system-link-chip { min-width:135px; } }
     @media (max-width:1050px) { .coherence-scope-card { display:none; } .header-status-card { display:none; } }
 
-    /* PulseFlow 0.5.0 · computational homeostasis field */
+    /* PulseFlow 0.6.0 · computational homeostasis memory field */
     .modulation-view {
       background:
         radial-gradient(circle at 50% 50%, rgba(0,168,90,.10), transparent 26%),
@@ -388,11 +388,11 @@
 <div class="shell">
   <header class="topbar">
     <div class="micro-grid">
-      <div class="micro">VERSION: <b class="accent" id="app-version">v0.5.0</b></div><div class="micro">TEMP: <b id="header-temp">--°C</b></div>
+      <div class="micro">VERSION: <b class="accent" id="app-version">v0.6.0</b></div><div class="micro">TEMP: <b id="header-temp">--°C</b></div>
       <div class="micro">BUILD: <b>OBS-LAB-2035</b></div><div class="micro">MODE: <b id="header-mode">BALANCED</b></div>
       <div class="micro">SESSION: <b id="header-session">--</b></div><div class="micro">AGENT: <b id="header-agent">UNBOUND</b></div>
     </div>
-    <div><div class="title">PULSEFLOW GOVERNOR <span class="accent" id="title-version">v0.5.0</span></div><div class="subtitle">Computational Homeostasis Lab · PFP v2.0 observables</div></div>
+    <div><div class="title">PULSEFLOW GOVERNOR <span class="accent" id="title-version">v0.6.0</span></div><div class="subtitle">Computational Homeostasis Lab · Vector Pressure Memory</div></div>
     <div class="top-right">
       <div class="header-status-card">
         <div><span>QoS</span><b class="accent" id="header-qos">MONITOR</b></div>
@@ -411,6 +411,7 @@
     <button class="tab" data-tab="telemetry">Telemetry</button>
     <button class="tab active" data-tab="modulation">Modulation</button>
     <button class="tab" data-tab="dataset">Dataset</button>
+    <button class="tab" data-tab="memory">Memory</button>
     <button class="tab" data-tab="agent">Agent</button>
     <button class="tab" data-tab="analytics">Analytics</button>
     <button class="tab" data-tab="replay">Replay</button>
@@ -496,6 +497,29 @@
         </div>
         <div class="data-card" style="margin-top:10px"><h3>Saved Sessions</h3><div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap"><select id="session-select" style="min-width:280px;padding:7px;border:1px solid #222"></select><button class="btn" data-action="session-refresh">Refresh</button><button class="btn" data-action="session-load">Load Charts</button><button class="btn" data-action="session-live">Return Live</button><button class="btn" data-action="session-export">Export JSONL</button><button class="btn" data-action="session-compact">Analyze &amp; Delete Raw</button><button class="btn primary" data-action="session-new">New Session</button></div><div class="table-wrap"><table><thead><tr><th>Session</th><th>Samples</th><th>Bytes</th><th>Last sample</th><th>Target</th></tr></thead><tbody id="session-table"></tbody></table></div><p class="mini-copy">Analyze &amp; Delete Raw validates every frame, preserves an aggregate analysis receipt, then deletes the selected inactive JSONL and metadata to reclaim space. The active session is protected.</p><pre class="json-box" id="compaction-receipt" style="margin-top:8px">No session compacted in this run.</pre></div>
         <div class="data-card" style="margin-top:10px"><h3>Latest Frame</h3><pre class="json-box" id="latest-frame-json">Waiting for first observation frame…</pre></div>
+      </div>
+
+      <div class="view content-view" data-view="memory">
+        <div class="section-grid">
+          <div class="data-card"><h3>Iteration Memory</h3><div class="big-value" id="memory-count">0</div><div class="mini-copy">Compact, graph-ready evidence survives after raw recordings are analyzed and deleted.</div></div>
+          <div class="data-card"><h3>Cortex Boundary</h3><div class="big-value">INDEX + RECALL</div><div class="mini-copy">PulseFlow owns telemetry and control. Cortex remembers discoveries and evidence provenance; it cannot change runtime authority.</div></div>
+          <div class="data-card"><h3>Pressure Transduction</h3><div class="big-value" id="memory-transduction">--</div><div class="mini-copy">Pressure simultaneously accumulating in some resources and dissipating in others.</div></div>
+          <div class="data-card"><h3>Net Vector Pressure</h3><div class="big-value" id="memory-net-vector">--</div><div class="mini-copy">Accumulation minus dissipation. A near-zero value does not imply that the system stood still.</div></div>
+        </div>
+        <div class="data-card" style="margin-top:10px">
+          <h3>Custom Iteration Graph</h3>
+          <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+            <select id="memory-session-select" style="min-width:280px;padding:7px;border:1px solid #222"></select>
+            <select id="memory-primary" style="padding:7px;border:1px solid #222"><option value="ecosystem_pressure">Ecosystem pressure</option><option value="latent_pressure">Latent pressure</option><option value="homeostatic_slack">Homeostatic slack</option><option value="cpu">CPU</option><option value="ram">RAM</option><option value="gpu">GPU</option><option value="thermal">Thermal</option><option value="stress">Stress</option><option value="recovery_balance">Recovery balance</option></select>
+            <select id="memory-secondary" style="padding:7px;border:1px solid #222"><option value="">No comparison</option><option value="ecosystem_pressure">Ecosystem pressure</option><option value="latent_pressure">Latent pressure</option><option value="homeostatic_slack">Homeostatic slack</option><option value="cpu">CPU</option><option value="ram" selected>RAM</option><option value="gpu">GPU</option><option value="thermal">Thermal</option><option value="stress">Stress</option><option value="recovery_balance">Recovery balance</option></select>
+            <button class="btn" data-action="memory-refresh">Refresh</button>
+            <button class="btn primary" data-action="memory-load">Load Iteration</button>
+          </div>
+          <canvas id="memory-chart" aria-label="Custom compact iteration data graph" style="width:100%;height:260px;border:1px solid #d4d0c9"></canvas>
+          <p class="mini-copy" id="memory-legend">Select an iteration and any two normalized signals.</p>
+        </div>
+        <div class="data-card" style="margin-top:10px"><h3>Learned Iterations</h3><div class="table-wrap"><table><thead><tr><th>Iteration</th><th>Version</th><th>Samples</th><th>Raw reclaimed</th><th>Transduction</th><th>Slack</th></tr></thead><tbody id="memory-table"></tbody></table></div></div>
+        <div class="data-card" style="margin-top:10px"><h3>Discoveries</h3><pre class="json-box" id="memory-discoveries">No compact learning iteration loaded.</pre></div>
       </div>
 
       <div class="view content-view" data-view="agent">
@@ -632,6 +656,8 @@
     status: null,
     history: [],
     sessions: [],
+    learningIterations: [],
+    learningDataset: null,
     persistentEvents: [],
     replayFrames: [],
     replayIndex: 0,
@@ -714,6 +740,8 @@
     "session-live": loadHistory,
     "session-export": exportSession,
     "session-compact": compactSession,
+    "memory-refresh": loadLearningIterations,
+    "memory-load": loadLearningDataset,
     "replay-load": loadReplayFrames,
     "replay-run": runReplay,
     "analytics-compare": compareSessions,
@@ -914,12 +942,17 @@
       drawCharts();
       drawHeatmap();
     });
+    ["#memory-primary","#memory-secondary"].forEach(selector => {
+      const select = $(selector);
+      if (select) select.addEventListener("change", drawMemoryChart);
+    });
   }
 
   function switchTab(tab) {
     $$('[data-tab]').forEach(node => node.classList.toggle("active", node.dataset.tab === tab));
     $$('[data-view]').forEach(node => node.classList.toggle("active", node.dataset.view === tab));
     if (tab === "dataset") loadSessions();
+    if (tab === "memory") loadLearningIterations();
     if (tab === "logs") loadPersistentEvents();
   }
 
@@ -945,7 +978,7 @@
     App.history = [];
     toast(`New session ${result.session_id} created.`);
     await loadHistory();
-    await loadSessions();
+    await Promise.all([loadSessions(), loadLearningIterations()]);
   }
   function selectedSession(selectId = "#session-select") {
     return $(selectId).value || (App.status && App.status.session_id) || "";
@@ -971,7 +1004,7 @@
     });
     $("#compaction-receipt").textContent = JSON.stringify(receipt, null, 2);
     toast(`Analysis preserved; ${formatBytes(receipt.freed_bytes)} of raw data deleted.`);
-    await loadSessions();
+    await Promise.all([loadSessions(), loadLearningIterations()]);
   }
   async function setStage(stage) {
     await api("/api/learning-stage", {method: "POST", body: {stage}});
@@ -1005,6 +1038,17 @@
   async function loadSessions() {
     App.sessions = await api("/api/sessions");
     renderSessions();
+  }
+  async function loadLearningIterations() {
+    App.learningIterations = await api("/api/learning/iterations");
+    renderLearningIterations();
+  }
+  async function loadLearningDataset() {
+    const iteration = $("#memory-session-select").value;
+    if (!iteration) throw new Error("No compact learning iteration selected.");
+    App.learningDataset = await api(`/api/learning/dataset/${encodeURIComponent(iteration)}`);
+    renderLearningDataset();
+    toast(`Learning iteration ${iteration} loaded.`);
   }
   async function loadPersistentEvents() {
     App.persistentEvents = await api("/api/ledger/tail?limit=300");
@@ -1099,8 +1143,8 @@
     $("#connection-label").textContent = App.connected ? "CONNECTED" : "DISCONNECTED";
     $("#header-temp").textContent = gpu.temperature_c != null ? `${number(gpu.temperature_c,0)}°C` : "--°C";
     $("#header-mode").textContent = String(s.mode || "balanced").toUpperCase();
-    setText("#app-version", `v${s.version || "0.5.0"}`);
-    setText("#title-version", `v${s.version || "0.5.0"}`);
+    setText("#app-version", `v${s.version || "0.6.0"}`);
+    setText("#title-version", `v${s.version || "0.6.0"}`);
     $("#header-session").textContent = String(s.session_id || "--").slice(-12).toUpperCase();
     $("#header-agent").textContent = s.agent_bound ? String(io.agent || "bound").toUpperCase() : "UNBOUND";
     $("#header-qos").textContent = String(c.applied_qos || "monitor_only").replaceAll("_"," ").toUpperCase();
@@ -1215,6 +1259,42 @@
     [$("#session-select"),$("#replay-session-select"),$("#compare-baseline"),$("#compare-candidate")].forEach((select,index) => { const prior=select.value; select.innerHTML=options || '<option value="">No sessions</option>'; if (prior && App.sessions.some(s=>s.session_id===prior)) select.value=prior; else if (index === 2 && App.sessions.length > 1) select.value=App.sessions[1].session_id; else if (App.status) select.value=App.status.session_id; });
     $("#session-table").innerHTML = App.sessions.map(session => `<tr><td>${escapeHtml(session.session_id)}</td><td>${session.samples}</td><td>${formatBytes(session.bytes)}</td><td>${session.last_sample_at_ms?new Date(Number(session.last_sample_at_ms)).toLocaleString():"--"}</td><td>${escapeHtml(session.target_label)}</td></tr>`).join("") || '<tr><td colspan="5">No saved sessions.</td></tr>';
   }
+  function renderLearningIterations() {
+    const select = $("#memory-session-select");
+    const prior = select.value;
+    select.innerHTML = App.learningIterations.map(item => `<option value="${escapeHtml(item.iteration_id)}">${escapeHtml(item.iteration_id)} Â· v${escapeHtml(item.app_version)}</option>`).join("") || '<option value="">No compact iterations</option>';
+    if (prior && App.learningIterations.some(item => item.iteration_id === prior)) select.value = prior;
+    setText("#memory-count", String(App.learningIterations.length));
+    $("#memory-table").innerHTML = App.learningIterations.map(item => `<tr><td>${escapeHtml(item.iteration_id)}</td><td>v${escapeHtml(item.app_version)}</td><td>${item.samples}</td><td>${formatBytes(item.raw_bytes_reclaimed)}</td><td>${number(item.pressure_transduction,4)}</td><td>${number(item.homeostatic_slack * 100,1)}%</td></tr>`).join("") || '<tr><td colspan="6">No analyzed iterations yet. Use Analyze &amp; Delete Raw on an inactive session.</td></tr>';
+  }
+  function renderLearningDataset() {
+    const dataset = App.learningDataset;
+    if (!dataset) return;
+    const summary = dataset.summary || {};
+    setText("#memory-transduction", number(summary.pressure_transduction,4));
+    setText("#memory-net-vector", `${Number(summary.net_vector_pressure) >= 0 ? "+" : ""}${number(summary.net_vector_pressure,4)}`);
+    $("#memory-discoveries").textContent = JSON.stringify({discoveries:dataset.discoveries, resource_momentum_per_minute:summary.resource_momentum_per_minute, resource_recovery_half_life_seconds:summary.resource_recovery_half_life_seconds}, null, 2);
+    drawMemoryChart();
+  }
+  function drawMemoryChart() {
+    const canvas = $("#memory-chart"), dataset = App.learningDataset;
+    if (!canvas || !dataset) return;
+    const points = dataset.points || [], primary = $("#memory-primary").value, secondary = $("#memory-secondary").value;
+    const rect=canvas.getBoundingClientRect(), ratio=window.devicePixelRatio||1;
+    canvas.width=Math.max(1,rect.width*ratio);canvas.height=Math.max(1,rect.height*ratio);
+    const ctx=canvas.getContext("2d");ctx.scale(ratio,ratio);ctx.clearRect(0,0,rect.width,rect.height);
+    ctx.strokeStyle="#d4d0c9";ctx.lineWidth=1;
+    for(let i=1;i<4;i++){const y=i*rect.height/4;ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(rect.width,y);ctx.stroke();}
+    const plot=(key,color)=>{
+      const values=points.map(point=>point[key]).filter(value=>value!=null&&Number.isFinite(Number(value)));
+      if(values.length<2)return;
+      const signed=key==="recovery_balance", min=signed?-1:0, max=1;
+      ctx.beginPath();values.forEach((value,index)=>{const x=index/(values.length-1)*rect.width;const y=rect.height-4-(clamp((Number(value)-min)/(max-min),0,1))*(rect.height-8);if(index===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);});
+      ctx.strokeStyle=color;ctx.lineWidth=2;ctx.stroke();
+    };
+    plot(primary,"#008f4c");if(secondary)plot(secondary,"#d36b00");
+    setText("#memory-legend", `${primary.replaceAll("_"," ")} (green)${secondary ? ` Â· ${secondary.replaceAll("_"," ")} (orange)` : ""} Â· ${points.length} compact points`);
+  }
   function renderLedger() {
     const events = [...(App.persistentEvents||[]), ...((App.status&&App.status.events)||[])].slice(-8);
     $("#ledger-preview").textContent = events.map(event => JSON.stringify(event)).join("\n") || "Waiting for events…";
@@ -1271,9 +1351,9 @@
 
   async function init() {
     bindControls();
-    window.addEventListener("resize", () => { drawCharts(); drawHeatmap(); drawCoherenceScope(); });
+    window.addEventListener("resize", () => { drawCharts(); drawHeatmap(); drawCoherenceScope(); drawMemoryChart(); });
     try { App.config = await api("/api/config"); $("#config-json").textContent = JSON.stringify(App.config,null,2); } catch (error) { $("#config-json").textContent = error.message; }
-    await Promise.allSettled([loadInterlinkHandshake(), loadProcesses(), loadHistory(), loadSessions(), loadPersistentEvents()]);
+    await Promise.allSettled([loadInterlinkHandshake(), loadProcesses(), loadHistory(), loadSessions(), loadLearningIterations(), loadPersistentEvents()]);
     await pollStatus();
     setInterval(pollStatus, 1000);
     setInterval(() => { setText("#footer-uptime", formatDuration((Date.now()-App.startedAt)/1000)); setText("#footer-time", new Date().toLocaleTimeString()); },1000);

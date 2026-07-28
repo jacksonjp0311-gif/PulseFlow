@@ -1,6 +1,6 @@
 {
     "schema":  "pulseflow.package-manifest.v1",
-    "version":  "0.5.0",
+    "version":  "0.6.0",
     "files":  [
                   {
                       "path":  ".gitattributes",
@@ -109,18 +109,18 @@
                   },
                   {
                       "path":  "BUILD-STATUS.md",
-                      "bytes":  1258,
-                      "sha256":  "122c94db273802a88c3bb1208e0cf9405c1b5e4b2d4fd57d9730cee25403d42b"
+                      "bytes":  1493,
+                      "sha256":  "4ab14c8c8f34a4d2e4b7ecde26ad78781bd5f48073238e6511da1c067fe49120"
                   },
                   {
                       "path":  "Cargo.lock",
                       "bytes":  6041,
-                      "sha256":  "1480495a5317f4b9854fb65425fe7edd05d43881308d8cf430a3870e6c716be7"
+                      "sha256":  "a6e5abb56a0c3ebae10774b3ec383b621fe0256b770f0e591aeaf72866810ed5"
                   },
                   {
                       "path":  "Cargo.toml",
                       "bytes":  552,
-                      "sha256":  "acb4b2e5157376ad6082bd24270f385d29bcd91951fb0d2596713c731703adbf"
+                      "sha256":  "bdf56ebeac35200df84aa15418cab927d9f005d43ef5f1197c4576621c0aa1d0"
                   },
                   {
                       "path":  "config/pulseflow.json",
@@ -180,7 +180,7 @@
                   {
                       "path":  "docs/INTERLINK_PAIRING.md",
                       "bytes":  1930,
-                      "sha256":  "cdf35bc8a7d420b55b1f7f69fb76e976d2f831a4c5de5fe5baf9b6d0a2a5b242"
+                      "sha256":  "46887b4d255114fb38239a410223799d67eb5979a70f9fd02874ed209526eeb6"
                   },
                   {
                       "path":  "docs/METRIC_GLOSSARY.md",
@@ -200,7 +200,7 @@
                   {
                       "path":  "docs/SYSTEM_INTERLINK.md",
                       "bytes":  1864,
-                      "sha256":  "64fc30ebad61344b4431973922d0827b7a14f7df19efb067ba79c276b28649f6"
+                      "sha256":  "0936069fdf51d1c85a3821ee3c77e607ca2052f49ad69ddc4567b860741e2e60"
                   },
                   {
                       "path":  "docs/TUNING_PROTOCOL.md",
@@ -234,8 +234,8 @@
                   },
                   {
                       "path":  "README.md",
-                      "bytes":  19262,
-                      "sha256":  "d1030894ddc00a074837e7874bb48bef544637e896637d949a724f670d2b5c4a"
+                      "bytes":  21757,
+                      "sha256":  "12247d84f7c10ac88724425105d8f20d91f82f92388f2eba4c61ef93806e9693"
                   },
                   {
                       "path":  "rust-toolchain.toml",
@@ -269,13 +269,13 @@
                   },
                   {
                       "path":  "schemas/pulseflow-api.contract.json",
-                      "bytes":  4786,
-                      "sha256":  "7aa43d9f62c402d7c527e7fe7546caa331637c9c70a082079154a9d312df91d1"
+                      "bytes":  5200,
+                      "sha256":  "0f4a2f47327d3424caf609273a7d67b0f6136071576a1cc3c38c04dd51ae9070"
                   },
                   {
                       "path":  "schemas/ui-actions.json",
-                      "bytes":  4549,
-                      "sha256":  "97c592baaca9f55875248ae9884249eaafe26d3a6194a3d2dd5321ab76455a38"
+                      "bytes":  4893,
+                      "sha256":  "01a7da299b87f192870baa2e54a7cc6bb319b562e382f7adc4411d8feea189bf"
                   },
                   {
                       "path":  "scripts/ARIA-Handshake.ps1",
@@ -284,28 +284,28 @@
                   },
                   {
                       "path":  "scripts/ARIA-Smoke.ps1",
-                      "bytes":  8520,
-                      "sha256":  "c021d0914cb65b7fe5903fdbb579fce60624867c67f5197ef68d91065f18e61c"
+                      "bytes":  9003,
+                      "sha256":  "dfd8a36723a1a2ac2b0b01de78a38831ea1385fe0b884c33cc4b9ab1e227dfe5"
                   },
                   {
                       "path":  "scripts/ARIA-Static.py",
-                      "bytes":  9236,
-                      "sha256":  "dad5bbed576620f4346b25850dda34d26c0f48a9bc1f965fd8d51cd73edd033f"
+                      "bytes":  9419,
+                      "sha256":  "faead0d726a76272b7ddbb3883563705e24f7ca404b2ec8a11e88b69676f4be3"
                   },
                   {
                       "path":  "scripts/ARIA-Verify.ps1",
-                      "bytes":  10234,
-                      "sha256":  "e2634e56b33d59f5ce8b8b892f3934e8c0a1563757992f69fe90274518d3a214"
+                      "bytes":  10452,
+                      "sha256":  "d1ed171e44452bb2de85139d39a37b7440518b0fed8a8e077db477fec12328d0"
                   },
                   {
                       "path":  "scripts/Install-PulseFlow.ps1",
                       "bytes":  5161,
-                      "sha256":  "4299d0196fe377edd54753420023ea06cca18d38b2907f7331f4dab8bf7aa089"
+                      "sha256":  "86c6e71004add656a43b4cd1ae64eb1883b263c07704df7cde6d799c0f7f6439"
                   },
                   {
                       "path":  "scripts/PulseFlow-All-One.ps1",
                       "bytes":  3424,
-                      "sha256":  "4ecca74fa0e8a9107b8555cff91bab8708b58cd1e5e8f533508f7a5a8f7f5930"
+                      "sha256":  "a8aa3212cd2c75e2bcdeee384025d1fa28dc1975c2aea5c8b540609b4f477075"
                   },
                   {
                       "path":  "scripts/Repair-PulseFlow-v0.2.2-ARIA-E0505.ps1",
@@ -319,8 +319,8 @@
                   },
                   {
                       "path":  "src/analytics.rs",
-                      "bytes":  40193,
-                      "sha256":  "611c3e8774e44dbb3071303eedafbf4871ff5674a200725a099d7edba95f83bd"
+                      "bytes":  47008,
+                      "sha256":  "a27337c7a7f71579a46b6f68f75386f7c8a9e1ec558d958021a08aa99fc00772"
                   },
                   {
                       "path":  "src/authority.rs",
@@ -354,8 +354,8 @@
                   },
                   {
                       "path":  "src/model.rs",
-                      "bytes":  35624,
-                      "sha256":  "1dd18303d922c80b00082a502e4451d621ef801638ad1687ee44598d302314e6"
+                      "bytes":  37851,
+                      "sha256":  "5ba4c6dcbc2d058a5121b86bc14d222c080363792f086e8a8fb5349349b6e7bc"
                   },
                   {
                       "path":  "src/policy.rs",
@@ -369,13 +369,13 @@
                   },
                   {
                       "path":  "src/server.rs",
-                      "bytes":  46162,
-                      "sha256":  "88bd036e5c2ad0ee8633055a79da1e05c37099d46f7abd0cfbe705e274e64534"
+                      "bytes":  46746,
+                      "sha256":  "db19b27619b6df32c3c2598152c48a07627105a420a989689f22e97a643409ff"
                   },
                   {
                       "path":  "src/storage.rs",
-                      "bytes":  11435,
-                      "sha256":  "8305a4fa0728676358688e5c44dfed628d55c95c22a707d2f89b0174d2b78484"
+                      "bytes":  15682,
+                      "sha256":  "0d295cc0f246bc8a63f8a3c1a7782d566f0d28641e223893bc24c8f67a9dfb6c"
                   },
                   {
                       "path":  "src/telemetry.rs",
@@ -389,8 +389,8 @@
                   },
                   {
                       "path":  "tests/analytics_tests.rs",
-                      "bytes":  6456,
-                      "sha256":  "4068b17e3b71eed976983588564f86160cae87f149a8b59e50394e59f2d5ef01"
+                      "bytes":  7338,
+                      "sha256":  "20235be38ad899d14d2b07d8a2bd147909ae3b3880a4e8e90e0f972c9afbd8f3"
                   },
                   {
                       "path":  "tests/authority_tests.rs",
@@ -414,8 +414,8 @@
                   },
                   {
                       "path":  "tests/storage_tests.rs",
-                      "bytes":  4146,
-                      "sha256":  "ffcde81c8cd2f31c0fdcd1b3dcf43c54fe7c7cbcac5587778dd079056cceacaf"
+                      "bytes":  4787,
+                      "sha256":  "89659f4529e88d3af665477d771b80af6a03e5e0d69e1371556de3cdaabde5c1"
                   },
                   {
                       "path":  "tests/ui_contract_tests.rs",
@@ -424,8 +424,8 @@
                   },
                   {
                       "path":  "web/index.html",
-                      "bytes":  111840,
-                      "sha256":  "d5c92f99d42e4589b7983dc6628aeb9f040e4caa42ea30b849ed471b3417bf6a"
+                      "bytes":  119417,
+                      "sha256":  "e9632421ae3ca7ed31335ee1836ab46bbabf39178abac7aa3f3392651518b4fd"
                   }
               ]
 }

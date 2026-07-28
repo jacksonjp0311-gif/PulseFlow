@@ -116,6 +116,18 @@
       "route": "/api/session/compact"
     },
     {
+      "id": "memory-refresh",
+      "kind": "http",
+      "method": "GET",
+      "route": "/api/learning/iterations"
+    },
+    {
+      "id": "memory-load",
+      "kind": "http",
+      "method": "GET",
+      "route": "/api/learning/dataset/"
+    },
+    {
       "id": "replay-load",
       "kind": "http",
       "method": "GET",
@@ -210,6 +222,7 @@
     "telemetry",
     "modulation",
     "dataset",
+    "memory",
     "agent",
     "analytics",
     "replay",
@@ -219,6 +232,9 @@
   "live_controls": [
     "process-select",
     "chart-window",
+    "memory-session-select",
+    "memory-primary",
+    "memory-secondary",
     "replay-range",
     "replay-speed",
     "tune-balanced_setpoint",

@@ -3,7 +3,7 @@
 ## Status
 
 This document defines a provisional, falsifiable model implemented by
-PulseFlow Governor v0.5.0. It is an engineering hypothesis, not a validated
+PulseFlow Governor v0.6.0. It is an engineering hypothesis, not a validated
 law, medical analogy, or claim of exclusive novelty.
 
 ## 1. Observation that forced the model
@@ -79,14 +79,30 @@ P_t =
 This prevents abundant GPU or queue headroom from concealing a nearly
 exhausted memory channel while remaining less brittle than a pure maximum.
 
-## 4. Latent pressure and homeostatic slack
+## 4. Vector migration, latent pressure, and homeostatic slack
 
 Instantaneous utilization cannot show whether the system is recovering or
-still accumulating delayed effects. For a window \(W\):
+still accumulating delayed effects. A scalar change can also cancel real
+motion: CPU recovery can numerically conceal RAM accumulation. For a window
+\(W\), define:
 
 \[
-A_W = \max(0,P_{\mathrm{last}}-P_{\mathrm{first}})
+\mathbf d_W=\mathbf z_{\mathrm{last}}-\mathbf z_{\mathrm{first}}
 \]
+
+\[
+A_W=\frac{1}{N}\sum_i\max(d_i,0),\qquad
+D_W=\frac{1}{N}\sum_i\max(-d_i,0)
+\]
+
+\[
+T_W=\min(A_W,D_W),\qquad N_W=A_W-D_W
+\]
+
+\(A_W\) is vector accumulation, \(D_W\) is vector dissipation, \(T_W\) is
+pressure transduction between channels, and \(N_W\) is signed net vector
+pressure. Unlike scalar pressure momentum, these values cannot let one
+recovering resource erase another accumulating resource.
 
 \[
 L_W = \frac{1}{|W|}\sum_{t\in W}|r_t|
@@ -107,7 +123,7 @@ S_H(W)=\operatorname{clip}
 \]
 
 \(S_H\) is not free CPU. It is a conservative estimate of remaining reserve
-after current ecosystem pressure, net accumulation, and unresolved residue
+after current ecosystem pressure, vector accumulation, and unresolved residue
 are accounted for.
 
 ## 5. Recovery dynamics
@@ -141,6 +157,10 @@ Pressure momentum reports the signed net change per minute:
 M_P = 60\frac{P_{\mathrm{last}}-P_{\mathrm{first}}}
 {t_{\mathrm{last}}-t_{\mathrm{first}}}
 \]
+
+PulseFlow also reports the same momentum independently for every available
+resource channel and measures pulse-recovery half-life per channel. This
+distinguishes “the scalar returned” from “RAM did not return.”
 
 For a detected pulse peak at \(P_k\), PulseFlow reports a recovery half-life
 when pressure subsequently reaches halfway from the peak toward its local

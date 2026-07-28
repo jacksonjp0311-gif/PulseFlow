@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pulseflow.local/schemas/learning-dataset.schema.json",
+  "title": "PulseFlow Compact Learning Dataset",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "iteration_id",
+    "created_at_ms",
+    "app_version",
+    "source_schema_version",
+    "raw_checksum",
+    "raw_bytes",
+    "summary",
+    "points",
+    "discoveries"
+  ],
+  "properties": {
+    "schema_version": { "const": "pulseflow.learning.v1" },
+    "iteration_id": { "type": "string", "pattern": "^[A-Za-z0-9_-]+$" },
+    "created_at_ms": { "type": "integer", "minimum": 0 },
+    "app_version": { "type": "string" },
+    "source_schema_version": { "type": "string" },
+    "raw_checksum": { "type": "string", "minLength": 16 },
+    "raw_bytes": { "type": "integer", "minimum": 0 },
+    "summary": { "type": "object" },
+    "points": {
+      "type": "array",
+      "maxItems": 241,
+      "items": {
+        "type": "object",
+        "required": [
+          "offset_ms",
+          "cpu",
+          "ram",
+          "stress",
+          "ecosystem_pressure",
+          "latent_pressure",
+          "homeostatic_slack",
+          "recovery_balance"
+        ],
+        "properties": {
+          "offset_ms": { "type": "integer", "minimum": 0 },
+          "cpu": { "type": "number", "minimum": 0, "maximum": 1 },
+          "ram": { "type": "number", "minimum": 0, "maximum": 1 },
+          "gpu": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+          "thermal": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+          "stress": { "type": "number", "minimum": 0, "maximum": 1 },
+          "ecosystem_pressure": { "type": "number", "minimum": 0, "maximum": 1 },
+          "latent_pressure": { "type": "number", "minimum": 0, "maximum": 1 },
+          "homeostatic_slack": { "type": "number", "minimum": 0, "maximum": 1 },
+          "recovery_balance": { "type": "number", "minimum": -1, "maximum": 1 }
+        },
+        "additionalProperties": false
+      }
+    },
+    "discoveries": { "type": "array", "items": { "type": "string" } }
+  },
+  "additionalProperties": false
+}

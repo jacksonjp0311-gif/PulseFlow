@@ -36,9 +36,12 @@ $Required = @(
     'schemas\ui-actions.json','schemas\observation-frame.schema.json',
     'schemas\agent-directive.schema.json','schemas\adaptive-suggestion.schema.json',
     'schemas\evidence-receipt.schema.json',
+    'schemas\learning-dataset.schema.json',
     'schemas\pulseflow-api.contract.json','schemas\powershell-runtime.contract.json',
     'aria\ARIA-CONNECT.json','scripts\ARIA-Handshake.ps1','scripts\ARIA-Smoke.ps1',
-    'scripts\Install-PulseFlow.ps1',
+    'scripts\Install-PulseFlow.ps1','scripts\Initialize-PulseFlow-Cortex.ps1',
+    'scripts\Sync-PulseFlow-Cortex.ps1','AGENTS.md',
+    'tools\cortex\PULSEFLOW_VENDOR.json','tools\cortex\RELEASE_MANIFEST.json',
     'docs\ARCHITECTURE.md','docs\CONTROL_MODEL.md','docs\DATA_MODEL.md',
     'docs\AUTHORITY_STATE_MODEL.md','docs\METRIC_GLOSSARY.md',
     'docs\EXPERIMENTAL_METHODOLOGY.md','docs\MIGRATION_V2.md',
@@ -213,7 +216,7 @@ New-Item -Path $ReceiptDirectory -ItemType Directory -Force | Out-Null
 $ReceiptPath = Join-Path $ReceiptDirectory ('verification-{0}.json' -f (Get-Date -Format 'yyyyMMdd-HHmmss'))
 $Receipt = [ordered]@{
     schema = 'aria.pulseflow.verification-receipt/v1'
-    version = '0.5.0'
+    version = '0.6.0'
     timestamp_utc = [DateTime]::UtcNow.ToString('o')
     handshake_digest = [string]$Handshake.digest
     authority = 'none'

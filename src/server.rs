@@ -219,6 +219,10 @@ fn dispatch(
             let sessions = storage::list_sessions(&config.storage.directory)?;
             Response::json(200, &sessions)
         }
+        ("GET", "/api/learning/iterations") => {
+            let datasets = storage::list_learning_datasets(&config.storage.directory)?;
+            Response::json(200, &datasets)
+        }
         ("GET", "/api/ledger/tail") => {
             let limit = query_limit(&request.query, 100, 2_000);
             let events = storage::read_event_tail(&config.event_ledger_path, limit)?;
@@ -737,8 +741,13 @@ fn dispatch(
             }
             let summary =
                 analytics::summarize_session(&input.session_id, &frames, config.analytics.epsilon);
-            let receipt =
-                storage::compact_session(&config.storage.directory, &input.session_id, summary)?;
+            let points = analytics::learning_graph_points(&frames, 240);
+            let receipt = storage::compact_session(
+                &config.storage.directory,
+                &input.session_id,
+                summary,
+                points,
+            )?;
             if let Ok(mut locked) = state.write() {
                 let event = locked.push_event(
                     "session_compacted",
@@ -835,6 +844,10 @@ fn dynamic_route(
     config: &Config,
 ) -> Result<Response, String> {
     if request.method == "GET" {
+        if let Some(iteration_id) = request.path.strip_prefix("/api/learning/dataset/") {
+            let dataset = storage::read_learning_dataset(&config.storage.directory, iteration_id)?;
+            return Response::json(200, &dataset);
+        }
         if let Some(session_id) = request.path.strip_prefix("/api/summary/") {
             let frames = storage::read_session_frames(
                 &config.storage.directory,

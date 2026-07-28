@@ -66,8 +66,8 @@ if ($Mode -eq 'Verify') {
 
 if ($Mode -eq 'Package') {
     & "$PSScriptRoot\ARIA-Verify.ps1"
-    $PackageRoot = Join-Path $Root 'dist\pulseflow-governor-v0.5.0'
-    $Archive = Join-Path $Root 'dist\pulseflow-governor-v0.5.0.zip'
+    $PackageRoot = Join-Path $Root 'dist\pulseflow-governor-v0.6.0'
+    $Archive = Join-Path $Root 'dist\pulseflow-governor-v0.6.0.zip'
     Remove-Item $PackageRoot -Recurse -Force -ErrorAction SilentlyContinue
     Remove-Item $Archive -Force -ErrorAction SilentlyContinue
     New-Item $PackageRoot -ItemType Directory -Force | Out-Null

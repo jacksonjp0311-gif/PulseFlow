@@ -1,0 +1,11 @@
+{
+  "schema_version": "pulseflow.cortex-vendor.v1",
+  "source_repository": "https://github.com/jacksonjp0311-gif/Cortex.git",
+  "source_local_path": "C:\\Users\\jacks\\OneDrive\\Desktop\\Cortex",
+  "source_branch": "agent/gcmt-governed-continuation",
+  "source_commit": "69a0f06b61c31fc2549b9a5398687207aa781557",
+  "cortex_version": "3.0.0",
+  "license": "MIT",
+  "integration_role": "Repository assimilation, governed iteration memory, selective recall, and Discovery Card consolidation.",
+  "authority_boundary": "Cortex may index and recall PulseFlow evidence. It cannot authorize runtime governance or mutate PulseFlow source."
+}

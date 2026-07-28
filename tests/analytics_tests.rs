@@ -128,3 +128,23 @@ fn homeostatic_slack_contracts_when_ecosystem_pressure_accumulates() {
     assert!(rising_summary.latent_pressure > stable_summary.latent_pressure);
     assert!(rising_summary.target_memory_share.is_some());
 }
+
+#[test]
+fn vector_pressure_exposes_cross_resource_transduction() {
+    let frames: Vec<ObservationFrame> = (0..20)
+        .map(|index| {
+            let mut observation = frame(index + 1, 1_000 + index as u128 * 1_000, 20.0, 50.0, 0.0);
+            observation.machine.cpu_percent = 80.0 - index as f64 * 2.0;
+            observation.machine.ram_percent = 40.0 + index as f64 * 2.0;
+            observation
+        })
+        .collect();
+    let summary = summarize_session("transduction", &frames, 1e-6);
+    assert!(summary.vector_accumulation > 0.0);
+    assert!(summary.vector_dissipation > 0.0);
+    assert!(summary.pressure_transduction > 0.0);
+    assert!(summary.latent_pressure > 0.0);
+    assert!(summary.resource_momentum_per_minute["cpu"] < 0.0);
+    assert!(summary.resource_momentum_per_minute["ram"] > 0.0);
+    assert!(summary.net_vector_pressure.abs() < 1e-9);
+}

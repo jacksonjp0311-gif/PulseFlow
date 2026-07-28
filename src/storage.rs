@@ -1,6 +1,6 @@
 use crate::model::{
-    now_ms, safe_session_id, stable_hash, ObservationFrame, RuntimeEvent, SessionInfo,
-    SessionSummary,
+    now_ms, safe_session_id, stable_hash, LearningDataset, LearningDatasetInfo, ObservationFrame,
+    RuntimeEvent, SessionInfo, SessionSummary,
 };
 use serde::{Deserialize, Serialize};
 use std::{
@@ -25,6 +25,7 @@ pub struct SessionCompactionReceipt {
     pub raw_checksum: String,
     pub freed_bytes: u64,
     pub raw_deleted: bool,
+    pub learning_dataset_path: String,
     pub summary: SessionSummary,
 }
 
@@ -243,6 +244,7 @@ pub fn compact_session(
     directory: impl AsRef<Path>,
     session_id: &str,
     summary: SessionSummary,
+    points: Vec<crate::model::LearningGraphPoint>,
 ) -> Result<SessionCompactionReceipt, String> {
     let safe = safe_session_id(session_id).ok_or("unsafe session id")?;
     let directory = directory.as_ref();
@@ -253,6 +255,25 @@ pub fn compact_session(
     let metadata_bytes = fs::metadata(&metadata_path)
         .map(|metadata| metadata.len())
         .unwrap_or(0);
+    let dataset_directory = directory.join("learning-datasets");
+    fs::create_dir_all(&dataset_directory).map_err(|error| error.to_string())?;
+    let dataset_path = dataset_directory.join(format!("{safe}.dataset.json"));
+    let discoveries = derive_discoveries(&summary);
+    let dataset = LearningDataset {
+        schema_version: "pulseflow.learning.v1".into(),
+        iteration_id: safe.clone(),
+        created_at_ms: now_ms(),
+        app_version: env!("CARGO_PKG_VERSION").into(),
+        source_schema_version: "pulseflow.observation.v3".into(),
+        raw_checksum: stable_hash(&raw),
+        raw_bytes: raw.len() as u64,
+        summary: summary.clone(),
+        points,
+        discoveries,
+    };
+    let dataset_bytes = serde_json::to_vec_pretty(&dataset).map_err(|error| error.to_string())?;
+    fs::write(&dataset_path, dataset_bytes)
+        .map_err(|error| format!("cannot write {}: {error}", dataset_path.display()))?;
     let receipt = SessionCompactionReceipt {
         schema_version: "pulseflow.compaction.v1".into(),
         session_id: safe.clone(),
@@ -260,6 +281,7 @@ pub fn compact_session(
         raw_checksum: stable_hash(&raw),
         freed_bytes: raw.len() as u64 + metadata_bytes,
         raw_deleted: true,
+        learning_dataset_path: dataset_path.to_string_lossy().into_owned(),
         summary,
     };
     let receipt_directory = directory.join("analysis-receipts");
@@ -275,6 +297,82 @@ pub fn compact_session(
             .map_err(|error| format!("cannot delete {}: {error}", metadata_path.display()))?;
     }
     Ok(receipt)
+}
+
+fn derive_discoveries(summary: &SessionSummary) -> Vec<String> {
+    let mut discoveries = Vec::new();
+    if summary.pressure_transduction >= 0.01 {
+        discoveries.push(format!(
+            "Pressure migrated between resource channels (transduction {:.4}) while net vector pressure was {:+.4}.",
+            summary.pressure_transduction, summary.net_vector_pressure
+        ));
+    }
+    if summary
+        .resource_momentum_per_minute
+        .get("ram")
+        .copied()
+        .unwrap_or(0.0)
+        > 0.0
+    {
+        discoveries.push("RAM pressure accumulated across the observation window.".into());
+    }
+    if summary.homeostatic_slack < 0.15 {
+        discoveries.push("Homeostatic slack remained below the provisional 0.15 reserve.".into());
+    }
+    if discoveries.is_empty() {
+        discoveries
+            .push("No bounded vector-pressure threshold was crossed in this iteration.".into());
+    }
+    discoveries
+}
+
+pub fn list_learning_datasets(
+    directory: impl AsRef<Path>,
+) -> Result<Vec<LearningDatasetInfo>, String> {
+    let directory = directory.as_ref().join("learning-datasets");
+    if !directory.exists() {
+        return Ok(Vec::new());
+    }
+    let mut datasets = Vec::new();
+    for entry in fs::read_dir(&directory).map_err(|error| error.to_string())? {
+        let path = entry.map_err(|error| error.to_string())?.path();
+        if path.extension().and_then(|value| value.to_str()) != Some("json") {
+            continue;
+        }
+        let bytes = fs::read(&path).map_err(|error| error.to_string())?;
+        if let Ok(dataset) = serde_json::from_slice::<LearningDataset>(&bytes) {
+            datasets.push(LearningDatasetInfo {
+                iteration_id: dataset.iteration_id,
+                created_at_ms: dataset.created_at_ms,
+                app_version: dataset.app_version,
+                samples: dataset.summary.samples,
+                duration_seconds: dataset.summary.duration_seconds,
+                points: dataset.points.len() as u64,
+                raw_bytes_reclaimed: dataset.raw_bytes,
+                ecosystem_pressure: dataset.summary.ecosystem_pressure,
+                latent_pressure: dataset.summary.latent_pressure,
+                homeostatic_slack: dataset.summary.homeostatic_slack,
+                pressure_transduction: dataset.summary.pressure_transduction,
+                net_vector_pressure: dataset.summary.net_vector_pressure,
+            });
+        }
+    }
+    datasets.sort_by(|left, right| right.created_at_ms.cmp(&left.created_at_ms));
+    Ok(datasets)
+}
+
+pub fn read_learning_dataset(
+    directory: impl AsRef<Path>,
+    iteration_id: &str,
+) -> Result<LearningDataset, String> {
+    let safe = safe_session_id(iteration_id).ok_or("unsafe iteration id")?;
+    let path = directory
+        .as_ref()
+        .join("learning-datasets")
+        .join(format!("{safe}.dataset.json"));
+    let bytes =
+        fs::read(&path).map_err(|error| format!("cannot read {}: {error}", path.display()))?;
+    serde_json::from_slice(&bytes).map_err(|error| format!("invalid learning dataset: {error}"))
 }
 
 pub fn read_event_tail(path: impl AsRef<Path>, limit: usize) -> Result<Vec<RuntimeEvent>, String> {

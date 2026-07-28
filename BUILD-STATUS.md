@@ -1,4 +1,4 @@
-# PulseFlow Governor 0.5.0 Build Status
+# PulseFlow Governor 0.6.0 Build Status
 
 ## Candidate scope
 
@@ -16,6 +16,9 @@
 - 2035 modulation core visual reconstruction;
 - local agent pairing handshake;
 - expanded UI/API contracts and live smoke coverage.
+- vector-valued resource momentum, accumulation, dissipation, and transduction;
+- compact graph-ready iteration memory retained after raw-session deletion;
+- vendored Cortex v3 repository memory with an explicit no-authority boundary.
 
 ## Verification boundary
 

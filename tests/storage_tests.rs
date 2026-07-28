@@ -1,6 +1,9 @@
 use pulseflow_governor::{
     model::{ObservationFrame, SessionSummary},
-    storage::{compact_session, list_sessions, read_session_frames, FrameRecorder},
+    storage::{
+        compact_session, list_learning_datasets, list_sessions, read_learning_dataset,
+        read_session_frames, FrameRecorder,
+    },
 };
 use std::{
     fs,
@@ -70,17 +73,37 @@ fn compaction_preserves_receipt_before_deleting_raw_session() {
             samples: 1,
             ..SessionSummary::default()
         },
+        Vec::new(),
     )
     .expect("compact session");
 
     assert!(receipt.raw_deleted);
     assert!(receipt.freed_bytes > 0);
+    assert!(receipt
+        .learning_dataset_path
+        .ends_with("compact-session.dataset.json"));
     assert!(!directory.join("compact-session.jsonl").exists());
     assert!(!directory.join("compact-session.meta.json").exists());
     assert!(directory
         .join("analysis-receipts")
         .join("compact-session.analysis.json")
         .exists());
+    assert!(directory
+        .join("learning-datasets")
+        .join("compact-session.dataset.json")
+        .exists());
+    assert_eq!(
+        list_learning_datasets(&directory)
+            .expect("list learning datasets")
+            .len(),
+        1
+    );
+    assert_eq!(
+        read_learning_dataset(&directory, "compact-session")
+            .expect("read learning dataset")
+            .iteration_id,
+        "compact-session"
+    );
 
     fs::remove_dir_all(directory).ok();
 }

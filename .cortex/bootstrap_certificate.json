@@ -1,0 +1,387 @@
+{
+  "schema_version": "1.1",
+  "certificate_type": "cortex_neural_repository_assimilation",
+  "status": "verified",
+  "issued_at": 1785235437.4082277,
+  "repository": {
+    "name": "PulseFlow",
+    "repository_id": "bd0397e2233e154e72f9565d",
+    "path": "C:\\Users\\jacks\\OneDrive\\Desktop\\pulseflow-governor"
+  },
+  "manifest": {
+    "stored_hash": "af91c66abb09da89c4357fa3ae3843c503107b20abec3a8600e099541a1b0e68",
+    "observed_hash": "af91c66abb09da89c4357fa3ae3843c503107b20abec3a8600e099541a1b0e68",
+    "current": true
+  },
+  "coverage": {
+    "inventory_count": 111,
+    "eligible_count": 84,
+    "indexed_count": 84,
+    "failed_count": 0,
+    "unsupported_count": 27,
+    "index_coverage": 1.0,
+    "authoritative_count": 3,
+    "authoritative_indexed": 3,
+    "authoritative_coverage": 1.0,
+    "unresolved_files": [
+      {
+        "path": ".gitattributes",
+        "status": "unsupported",
+        "metadata": {
+          "reason": "unsupported extension or format"
+        }
+      },
+      {
+        "path": ".gitignore",
+        "status": "unsupported",
+        "metadata": {
+          "reason": "unsupported extension or format"
+        }
+      },
+      {
+        "path": "Cargo.lock",
+        "status": "unsupported",
+        "metadata": {
+          "reason": "unsupported extension or format"
+        }
+      },
+      {
+        "path": "aria/pulseflow.aria",
+        "status": "unsupported",
+        "metadata": {
+          "reason": "unsupported extension or format"
+        }
+      },
+      {
+        "path": "assets/icons/pulseflow-governor-1024.png",
+        "status": "unsupported",
+        "metadata": {
+          "reason": "unsupported extension or format"
+        }
+      },
+      {
+        "path": "assets/icons/pulseflow-governor-128.png",
+        "status": "unsupported",
+        "metadata": {
+          "reason": "unsupported extension or format"
+        }
+      },
+      {
+        "path": "assets/icons/pulseflow-governor-16.png",
+        "status": "unsupported",
+        "metadata": {
+          "reason": "unsupported extension or format"
+        }
+      },
+      {
+        "path": "assets/icons/pulseflow-governor-192.png",
+        "status": "unsupported",
+        "metadata": {
+          "reason": "unsupported extension or format"
+        }
+      },
+      {
+        "path": "assets/icons/pulseflow-governor-24.png",
+        "status": "unsupported",
+        "metadata": {
+          "reason": "unsupported extension or format"
+        }
+      },
+      {
+        "path": "assets/icons/pulseflow-governor-256.png",
+        "status": "unsupported",
+        "metadata": {
+          "reason": "unsupported extension or format"
+        }
+      },
+      {
+        "path": "assets/icons/pulseflow-governor-32.png",
+        "status": "unsupported",
+        "metadata": {
+          "reason": "unsupported extension or format"
+        }
+      },
+      {
+        "path": "assets/icons/pulseflow-governor-48.png",
+        "status": "unsupported",
+        "metadata": {
+          "reason": "unsupported extension or format"
+        }
+      },
+      {
+        "path": "assets/icons/pulseflow-governor-512.png",
+        "status": "unsupported",
+        "metadata": {
+          "reason": "unsupported extension or format"
+        }
+      },
+      {
+        "path": "assets/icons/pulseflow-governor-64.png",
+        "status": "unsupported",
+        "metadata": {
+          "reason": "unsupported extension or format"
+        }
+      },
+      {
+        "path": "assets/icons/pulseflow-governor.ico",
+        "status": "unsupported",
+        "metadata": {
+          "reason": "unsupported extension or format"
+        }
+      },
+      {
+        "path": "docs/PULSEFLOW-UI-CONCEPT.png",
+        "status": "unsupported",
+        "metadata": {
+          "reason": "unsupported extension or format"
+        }
+      },
+      {
+        "path": "docs/assets/pulseflow-readme-hero.webp",
+        "status": "unsupported",
+        "metadata": {
+          "reason": "unsupported extension or format"
+        }
+      },
+      {
+        "path": "state/.gitkeep",
+        "status": "unsupported",
+        "metadata": {
+          "reason": "unsupported extension or format"
+        }
+      },
+      {
+        "path": "state/pulseflow-events.jsonl",
+        "status": "unsupported",
+        "metadata": {
+          "reason": "unsupported extension or format"
+        }
+      },
+      {
+        "path": "work/cortex-v3-69a0f06.zip",
+        "status": "unsupported",
+        "metadata": {
+          "reason": "unsupported extension or format"
+        }
+      },
+      {
+        "path": "work/icon/install-test-embedded/assets/icons/pulseflow-governor.ico",
+        "status": "unsupported",
+        "metadata": {
+          "reason": "unsupported extension or format"
+        }
+      },
+      {
+        "path": "work/icon/install-test-embedded/bin/pulseflow-governor.exe",
+        "status": "unsupported",
+        "metadata": {
+          "reason": "unsupported extension or format"
+        }
+      },
+      {
+        "path": "work/icon/install-test/assets/icons/pulseflow-governor.ico",
+        "status": "unsupported",
+        "metadata": {
+          "reason": "unsupported extension or format"
+        }
+      },
+      {
+        "path": "work/icon/install-test/bin/pulseflow-governor.exe",
+        "status": "unsupported",
+        "metadata": {
+          "reason": "unsupported extension or format"
+        }
+      },
+      {
+        "path": "work/icon/pulseflow-governor-chroma.png",
+        "status": "unsupported",
+        "metadata": {
+          "reason": "unsupported extension or format"
+        }
+      },
+      {
+        "path": "work/icon/shortcut-test-embedded/PulseFlow Governor.lnk",
+        "status": "unsupported",
+        "metadata": {
+          "reason": "unsupported extension or format"
+        }
+      },
+      {
+        "path": "work/icon/shortcut-test/PulseFlow Governor.lnk",
+        "status": "unsupported",
+        "metadata": {
+          "reason": "unsupported extension or format"
+        }
+      }
+    ]
+  },
+  "integration": {
+    "required_files": {
+      ".cortex\\config.json": true,
+      ".cortex\\README.md": true,
+      ".cortex\\bin\\cortex.ps1": true,
+      ".cortex\\bin\\cortex.sh": true,
+      "AGENTS.md": true
+    },
+    "agents_managed_block": true,
+    "complete": true
+  },
+  "graph": {
+    "symbols": 261,
+    "edges": 785,
+    "relation_counts": {
+      "imports": 61,
+      "resolves_to": 98,
+      "documents": 12,
+      "tested_by": 7,
+      "references": 112,
+      "described_by": 6,
+      "calls": 384,
+      "co_changed": 105
+    }
+  },
+  "telemetry": {
+    "git_commits": 7,
+    "files_with_history": 88,
+    "available": true
+  },
+  "environment": {
+    "available": true,
+    "profile_hash": "ff670752899ea07e522639ec6547c216e6d86339ec132c007fa86985f93e7ba9",
+    "ecosystems": [
+      "ci",
+      "python",
+      "rust"
+    ],
+    "frameworks": []
+  },
+  "neural_interlink": {
+    "repo": "PulseFlow",
+    "nodes": 84,
+    "synapses": 393,
+    "node_coverage": 1.0,
+    "graph_hash": "f56c0cb7dde5c8ac7f137a9e00a25c4c775951749b07fd08277d44bb56837261",
+    "ledger_valid": true
+  },
+  "retrieval_validation": {
+    "probe_count": 8,
+    "pass_rate": 1.0,
+    "results": [
+      {
+        "query": "Why PulseFlow exists",
+        "expected_path": "README.md",
+        "returned_paths": [
+          "README.md",
+          "tests/ui_contract_tests.rs",
+          "work/icon/install-test-embedded/installation.json",
+          "work/icon/install-test/installation.json",
+          "tests/storage_tests.rs"
+        ],
+        "passed": true
+      },
+      {
+        "query": "Origin: landing-control theory, extracted for compute",
+        "expected_path": "README.md",
+        "returned_paths": [
+          "README.md",
+          "README.md",
+          "docs/CONTROL_MODEL.md",
+          "README.md",
+          "docs/SYSTEM_INTERLINK.md"
+        ],
+        "passed": true
+      },
+      {
+        "query": "The idea in one picture",
+        "expected_path": "README.md",
+        "returned_paths": [
+          "docs/ICON_AND_INSTALLATION.md",
+          "README.md",
+          "docs/TUNING_PROTOCOL.md",
+          "docs/METRIC_GLOSSARY.md",
+          "work/pr-body.md"
+        ],
+        "passed": true
+      },
+      {
+        "query": "main",
+        "expected_path": "build.rs",
+        "returned_paths": [
+          "tests/ui_contract_tests.rs",
+          "scripts/Repair-PulseFlow-v0.2.2-ARIA-E0505.ps1",
+          "scripts/ARIA-Static.py",
+          "build.rs",
+          "scripts/ARIA-Verify.ps1"
+        ],
+        "passed": true
+      },
+      {
+        "query": "Get-Sha256Text",
+        "expected_path": "scripts/ARIA-Handshake.ps1",
+        "returned_paths": [
+          "scripts/ARIA-Handshake.ps1",
+          "MANIFEST.json",
+          "docs/MIGRATION_V2.md",
+          "MANIFEST.json",
+          "web/index.html"
+        ],
+        "passed": true
+      },
+      {
+        "query": "New-ApiUri",
+        "expected_path": "scripts/ARIA-Smoke.ps1",
+        "returned_paths": [
+          "scripts/ARIA-Smoke.ps1",
+          "scripts/ARIA-Smoke.ps1",
+          "schemas/powershell-runtime.contract.json",
+          "aria/README.md",
+          "Cargo.toml"
+        ],
+        "passed": true
+      },
+      {
+        "query": "Invoke-ApiGet",
+        "expected_path": "scripts/ARIA-Smoke.ps1",
+        "returned_paths": [
+          "scripts/ARIA-Smoke.ps1",
+          "scripts/ARIA-Smoke.ps1",
+          "schemas/powershell-runtime.contract.json",
+          "src/adaptive.rs",
+          "examples/Read-AgentDirective.ps1"
+        ],
+        "passed": true
+      },
+      {
+        "query": "Invoke-ApiPost",
+        "expected_path": "scripts/ARIA-Smoke.ps1",
+        "returned_paths": [
+          "scripts/ARIA-Smoke.ps1",
+          "scripts/ARIA-Smoke.ps1",
+          "schemas/powershell-runtime.contract.json",
+          "src/adaptive.rs",
+          "src/server.rs"
+        ],
+        "passed": true
+      }
+    ]
+  },
+  "checks": {
+    "database_integrity": true,
+    "integration_complete": true,
+    "manifest_integrity": true,
+    "index_coverage": true,
+    "authoritative_coverage": true,
+    "retrieval_probes": true,
+    "environment_profile": true,
+    "neural_node_coverage": true,
+    "neural_ledger_integrity": true
+  },
+  "thresholds": {
+    "index_coverage": 0.98,
+    "manifest_integrity": 1.0,
+    "retrieval_probe_pass_rate": 0.75
+  },
+  "claim_boundary": "This certificate verifies inventory, supported-content indexing, environment profiling, relationship extraction, neural interlink compilation, integration files, and retrieval probes at the recorded manifest. It does not prove program correctness, security, safety, semantic completeness, or authorization to mutate the repository.",
+  "retrieval_enabled": true,
+  "certificate_hash": "d9ccbe4a92a8e96692e5917eb1bbc7e081a1ef575530636077b3faf7fed47e47"
+}

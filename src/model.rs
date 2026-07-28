@@ -3,6 +3,7 @@ use crate::{
     config::ControlConfig,
 };
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use std::{
     collections::VecDeque,
     time::{SystemTime, UNIX_EPOCH},
@@ -294,6 +295,18 @@ pub struct RuntimeMetrics {
     pub recovery_half_life_seconds: Option<f64>,
     /// Selected target memory divided by total used host memory.
     pub target_memory_share: Option<f64>,
+    /// Signed per-resource pressure velocity over the rolling window, per minute.
+    pub resource_momentum_per_minute: BTreeMap<String, f64>,
+    /// Measured pulse half-life for each independently observed resource.
+    pub resource_recovery_half_life_seconds: BTreeMap<String, f64>,
+    /// Mean positive displacement across the resource-pressure vector.
+    pub vector_accumulation: f64,
+    /// Mean negative displacement across the resource-pressure vector.
+    pub vector_dissipation: f64,
+    /// Pressure that moved between channels while scalar pressure could appear stable.
+    pub pressure_transduction: f64,
+    /// Signed vector accumulation minus dissipation.
+    pub net_vector_pressure: f64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -1003,6 +1016,56 @@ pub struct SessionSummary {
     pub resource_coupling: Option<f64>,
     pub recovery_half_life_seconds: Option<f64>,
     pub target_memory_share: Option<f64>,
+    pub resource_momentum_per_minute: BTreeMap<String, f64>,
+    pub resource_recovery_half_life_seconds: BTreeMap<String, f64>,
+    pub vector_accumulation: f64,
+    pub vector_dissipation: f64,
+    pub pressure_transduction: f64,
+    pub net_vector_pressure: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct LearningGraphPoint {
+    pub offset_ms: u64,
+    pub cpu: f64,
+    pub ram: f64,
+    pub gpu: Option<f64>,
+    pub thermal: Option<f64>,
+    pub stress: f64,
+    pub ecosystem_pressure: f64,
+    pub latent_pressure: f64,
+    pub homeostatic_slack: f64,
+    pub recovery_balance: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct LearningDataset {
+    pub schema_version: String,
+    pub iteration_id: String,
+    pub created_at_ms: u128,
+    pub app_version: String,
+    pub source_schema_version: String,
+    pub raw_checksum: String,
+    pub raw_bytes: u64,
+    pub summary: SessionSummary,
+    pub points: Vec<LearningGraphPoint>,
+    pub discoveries: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct LearningDatasetInfo {
+    pub iteration_id: String,
+    pub created_at_ms: u128,
+    pub app_version: String,
+    pub samples: u64,
+    pub duration_seconds: f64,
+    pub points: u64,
+    pub raw_bytes_reclaimed: u64,
+    pub ecosystem_pressure: f64,
+    pub latent_pressure: f64,
+    pub homeostatic_slack: f64,
+    pub pressure_transduction: f64,
+    pub net_vector_pressure: f64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
