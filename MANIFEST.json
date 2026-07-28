@@ -1,6 +1,6 @@
 {
     "schema":  "pulseflow.package-manifest.v1",
-    "version":  "0.4.0",
+    "version":  "0.5.0",
     "files":  [
                   {
                       "path":  ".gitattributes",
@@ -110,17 +110,17 @@
                   {
                       "path":  "BUILD-STATUS.md",
                       "bytes":  1258,
-                      "sha256":  "682a4393707701a90d81893e88c64816055af2e88f7a937413283e0c54d7b13b"
+                      "sha256":  "122c94db273802a88c3bb1208e0cf9405c1b5e4b2d4fd57d9730cee25403d42b"
                   },
                   {
                       "path":  "Cargo.lock",
                       "bytes":  6041,
-                      "sha256":  "ab7378ece0760bd8b7fffe6114e48fae6865e31bca88132d328b410fa78eaab0"
+                      "sha256":  "1480495a5317f4b9854fb65425fe7edd05d43881308d8cf430a3870e6c716be7"
                   },
                   {
                       "path":  "Cargo.toml",
                       "bytes":  552,
-                      "sha256":  "424223c39f2eb9fe3d85059fcf91b55e0317379e64c2059789334e9ebb2a11f2"
+                      "sha256":  "acb4b2e5157376ad6082bd24270f385d29bcd91951fb0d2596713c731703adbf"
                   },
                   {
                       "path":  "config/pulseflow.json",
@@ -180,7 +180,7 @@
                   {
                       "path":  "docs/INTERLINK_PAIRING.md",
                       "bytes":  1930,
-                      "sha256":  "a8418a9e7acb2b4bf32fd89ed66fc83d86d37e4421a8d6f917fdffb6473b80df"
+                      "sha256":  "cdf35bc8a7d420b55b1f7f69fb76e976d2f831a4c5de5fe5baf9b6d0a2a5b242"
                   },
                   {
                       "path":  "docs/METRIC_GLOSSARY.md",
@@ -200,7 +200,7 @@
                   {
                       "path":  "docs/SYSTEM_INTERLINK.md",
                       "bytes":  1864,
-                      "sha256":  "9a367e664d75586087c2e6a99e80415cb0391eb73e5b847af668032998c11b2d"
+                      "sha256":  "64fc30ebad61344b4431973922d0827b7a14f7df19efb067ba79c276b28649f6"
                   },
                   {
                       "path":  "docs/TUNING_PROTOCOL.md",
@@ -234,8 +234,8 @@
                   },
                   {
                       "path":  "README.md",
-                      "bytes":  15138,
-                      "sha256":  "5cd1783cf6e50f00eea4f2a86d695311b845a378df2e0557900b2493e8a32fa2"
+                      "bytes":  19262,
+                      "sha256":  "d1030894ddc00a074837e7874bb48bef544637e896637d949a724f670d2b5c4a"
                   },
                   {
                       "path":  "rust-toolchain.toml",
@@ -295,17 +295,17 @@
                   {
                       "path":  "scripts/ARIA-Verify.ps1",
                       "bytes":  10234,
-                      "sha256":  "9d8de94bb22fd6fbcc0404fabe85e706cbcf9d6655827b1232dd072be4e54d89"
+                      "sha256":  "e2634e56b33d59f5ce8b8b892f3934e8c0a1563757992f69fe90274518d3a214"
                   },
                   {
                       "path":  "scripts/Install-PulseFlow.ps1",
                       "bytes":  5161,
-                      "sha256":  "2482e6618afa8dc16955fd10dfba4b2523a072edd2e0127f4f42d3e370fe7d46"
+                      "sha256":  "4299d0196fe377edd54753420023ea06cca18d38b2907f7331f4dab8bf7aa089"
                   },
                   {
                       "path":  "scripts/PulseFlow-All-One.ps1",
                       "bytes":  3424,
-                      "sha256":  "2c41acff07bda2af4acdb10c6163a07c70fe66f297ecac2b66bcb4226996d6dd"
+                      "sha256":  "4ecca74fa0e8a9107b8555cff91bab8708b58cd1e5e8f533508f7a5a8f7f5930"
                   },
                   {
                       "path":  "scripts/Repair-PulseFlow-v0.2.2-ARIA-E0505.ps1",
@@ -319,8 +319,8 @@
                   },
                   {
                       "path":  "src/analytics.rs",
-                      "bytes":  29449,
-                      "sha256":  "19101aa9cf57360fbb11771e4746f4a5329657a7e7ac0e0ad7ee51565c1de977"
+                      "bytes":  40193,
+                      "sha256":  "611c3e8774e44dbb3071303eedafbf4871ff5674a200725a099d7edba95f83bd"
                   },
                   {
                       "path":  "src/authority.rs",
@@ -354,13 +354,13 @@
                   },
                   {
                       "path":  "src/model.rs",
-                      "bytes":  34112,
-                      "sha256":  "c95fe501db0b3a61e144754d68d2663bfb2d0d12775af33726ea2e79bd2ce855"
+                      "bytes":  35624,
+                      "sha256":  "1dd18303d922c80b00082a502e4451d621ef801638ad1687ee44598d302314e6"
                   },
                   {
                       "path":  "src/policy.rs",
-                      "bytes":  4489,
-                      "sha256":  "f9f1001a4fd627fe8b66d3313ab6cbbef1cc7bfe9005c3689f0dadae6203826a"
+                      "bytes":  5754,
+                      "sha256":  "4d157175ed51557e3da7d7d7157ed135ea223f5966ccbb911a639d9c9a0ce82b"
                   },
                   {
                       "path":  "src/replay.rs",
@@ -389,8 +389,8 @@
                   },
                   {
                       "path":  "tests/analytics_tests.rs",
-                      "bytes":  5283,
-                      "sha256":  "4f0642eb2b19a5fdec4c938b63af8c8f661f1773cbd4884e69ce08b2f41c86eb"
+                      "bytes":  6456,
+                      "sha256":  "4068b17e3b71eed976983588564f86160cae87f149a8b59e50394e59f2d5ef01"
                   },
                   {
                       "path":  "tests/authority_tests.rs",
@@ -404,8 +404,8 @@
                   },
                   {
                       "path":  "tests/policy_tests.rs",
-                      "bytes":  3195,
-                      "sha256":  "d42fa054b80c3cd6c9fb0082847c3e4a67df85ecefc49ba179a2041af130015a"
+                      "bytes":  3356,
+                      "sha256":  "734d74f17bc11e64e235a5000367098db3de8a510af5052ad36f9b8dd079c7ef"
                   },
                   {
                       "path":  "tests/replay_tests.rs",
@@ -424,8 +424,8 @@
                   },
                   {
                       "path":  "web/index.html",
-                      "bytes":  109484,
-                      "sha256":  "27201c14cfd88813c4981401b24f37f4fe7b2e9d332d9a1713cc5bb15f8d7580"
+                      "bytes":  111840,
+                      "sha256":  "d5c92f99d42e4589b7983dc6628aeb9f040e4caa42ea30b849ed471b3417bf6a"
                   }
               ]
 }

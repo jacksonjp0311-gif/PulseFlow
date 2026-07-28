@@ -30,15 +30,38 @@ pub fn recommend(
         * (1.0 - 0.25 * residual_pressure))
         .clamp(0.05, 1.0);
 
-    let concurrency = ((config.maximum_concurrency.max(1) as f64 * capacity).round() as u32)
+    let mut concurrency = ((config.maximum_concurrency.max(1) as f64 * capacity).round() as u32)
         .clamp(1, config.maximum_concurrency.max(1));
     let minimum_batch = config.minimum_batch_size.max(1);
     let maximum_batch = config.maximum_batch_size.max(minimum_batch);
-    let batch = ((maximum_batch as f64 * capacity * capacity).round() as u32)
+    let mut batch = ((maximum_batch as f64 * capacity * capacity).round() as u32)
         .clamp(minimum_batch, maximum_batch);
 
     let memory_constrained = telemetry.memory_percent >= 85.0;
     let memory_critical = telemetry.memory_percent >= 95.0;
+    if memory_critical {
+        concurrency = 1;
+        batch = minimum_batch;
+    } else if telemetry.memory_percent >= 90.0 {
+        concurrency = concurrency.min(2);
+        batch = batch.min(16).max(minimum_batch);
+    } else if memory_constrained {
+        concurrency = concurrency.min(4);
+        batch = batch.min(32).max(minimum_batch);
+    }
+    let homeostasis_evidence = metrics.samples >= 8;
+    if homeostasis_evidence {
+        if metrics.homeostatic_slack <= 0.15 {
+            concurrency = 1;
+            batch = batch.min(8).max(minimum_batch);
+        } else if metrics.homeostatic_slack <= 0.30 {
+            concurrency = concurrency.min(2);
+            batch = batch.min(16).max(minimum_batch);
+        } else if metrics.homeostatic_slack <= 0.45 {
+            concurrency = concurrency.min(4);
+            batch = batch.min(32).max(minimum_batch);
+        }
+    }
     let protect = control.phase == "protect" || temperature_pressure >= 0.80 || memory_critical;
     let constrained = protect
         || memory_constrained
@@ -47,7 +70,8 @@ pub fn recommend(
     let abundant = !constrained
         && control.capacity_signal >= 0.75
         && stability >= 0.80
-        && queue_pressure < 0.50;
+        && queue_pressure < 0.50
+        && (!homeostasis_evidence || metrics.homeostatic_slack > 0.55);
 
     let (model_route, allow_background, token_scale, retrieval_scale, reason) = if memory_critical {
         (
@@ -101,6 +125,14 @@ pub fn recommend(
 
     let enough_evidence = metrics.samples >= config.minimum_samples_before_adaptation;
     let directive_live = stage == LearningStage::AgentPolicy && enough_evidence;
+    let homeostasis_note = if homeostasis_evidence {
+        format!(
+            " Homeostatic slack {:.2}; recovery balance {:.2}.",
+            metrics.homeostatic_slack, metrics.recovery_balance
+        )
+    } else {
+        String::new()
+    };
 
     AgentDirective {
         authority: control.capacity_signal,
@@ -113,11 +145,11 @@ pub fn recommend(
         shadow_only: !directive_live,
         reason: if !enough_evidence {
             format!(
-                "{} Directive remains shadow-only until {} finalized samples are available.",
-                reason, config.minimum_samples_before_adaptation
+                "{}{} Directive remains shadow-only until {} finalized samples are available.",
+                reason, homeostasis_note, config.minimum_samples_before_adaptation
             )
         } else {
-            reason.into()
+            format!("{reason}{homeostasis_note}")
         },
     }
 }

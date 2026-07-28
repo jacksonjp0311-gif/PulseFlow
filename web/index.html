@@ -301,7 +301,7 @@
     @media (max-width:1300px) { .coherence-scope-card { width:34%; } .system-link-chip { min-width:135px; } }
     @media (max-width:1050px) { .coherence-scope-card { display:none; } .header-status-card { display:none; } }
 
-    /* PulseFlow 0.4.0 · 2035 interlink and modulation field */
+    /* PulseFlow 0.5.0 · computational homeostasis field */
     .modulation-view {
       background:
         radial-gradient(circle at 50% 50%, rgba(0,168,90,.10), transparent 26%),
@@ -388,11 +388,11 @@
 <div class="shell">
   <header class="topbar">
     <div class="micro-grid">
-      <div class="micro">VERSION: <b class="accent" id="app-version">v0.4.0</b></div><div class="micro">TEMP: <b id="header-temp">--°C</b></div>
+      <div class="micro">VERSION: <b class="accent" id="app-version">v0.5.0</b></div><div class="micro">TEMP: <b id="header-temp">--°C</b></div>
       <div class="micro">BUILD: <b>OBS-LAB-2035</b></div><div class="micro">MODE: <b id="header-mode">BALANCED</b></div>
       <div class="micro">SESSION: <b id="header-session">--</b></div><div class="micro">AGENT: <b id="header-agent">UNBOUND</b></div>
     </div>
-    <div><div class="title">PULSEFLOW GOVERNOR <span class="accent" id="title-version">v0.4.0</span></div><div class="subtitle">Pulse Feedback Modulation Lab · PFP v2.0 observables</div></div>
+    <div><div class="title">PULSEFLOW GOVERNOR <span class="accent" id="title-version">v0.5.0</span></div><div class="subtitle">Computational Homeostasis Lab · PFP v2.0 observables</div></div>
     <div class="top-right">
       <div class="header-status-card">
         <div><span>QoS</span><b class="accent" id="header-qos">MONITOR</b></div>
@@ -532,6 +532,10 @@
           <div class="data-card"><h3>Futurist Governor</h3><div class="big-value" id="metric-forecast">ACQUIRING</div><div class="mini-copy" id="forecast-copy">Bounded forward-pressure forecast; it never widens control authority.</div></div>
           <div class="data-card"><h3>Aggregate Contraction</h3><div class="big-value" id="metric-contraction">--</div><div class="mini-copy">Rolling Lyapunov proxy ΔV. Negative total ΔV indicates aggregate contraction; individual intervals may expand.</div></div>
           <div class="data-card"><h3>Trigger Density</h3><div class="big-value" id="metric-trigger-density">0/min</div><div class="mini-copy" id="trigger-copy">Applied QoS event density and observed minimum inter-event time expose chatter and dwell behavior.</div></div>
+          <div class="data-card"><h3>Homeostatic Slack</h3><div class="big-value" id="metric-homeostatic-slack">--%</div><div class="mini-copy" id="homeostatic-copy">Provisional reserve for accepting another work pulse and recovering toward the observed envelope.</div></div>
+          <div class="data-card"><h3>Pressure Momentum</h3><div class="big-value" id="metric-pressure-momentum">--/min</div><div class="mini-copy" id="pressure-copy">Signed ecosystem-pressure velocity. Positive values indicate accumulating pressure.</div></div>
+          <div class="data-card"><h3>Recovery Balance</h3><div class="big-value" id="metric-recovery-balance">--</div><div class="mini-copy" id="recovery-copy">Compares falling pressure velocity with rising pressure velocity across natural pulses.</div></div>
+          <div class="data-card"><h3>Resource Coupling</h3><div class="big-value" id="metric-resource-coupling">--%</div><div class="mini-copy" id="coupling-copy">Mean absolute correlation among CPU, RAM, and GPU changes—not causal attribution.</div></div>
         </div>
         <div class="data-card" style="margin-top:10px"><h3>Baseline / Candidate Comparison</h3>
           <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end">
@@ -1095,8 +1099,8 @@
     $("#connection-label").textContent = App.connected ? "CONNECTED" : "DISCONNECTED";
     $("#header-temp").textContent = gpu.temperature_c != null ? `${number(gpu.temperature_c,0)}°C` : "--°C";
     $("#header-mode").textContent = String(s.mode || "balanced").toUpperCase();
-    setText("#app-version", `v${s.version || "0.4.0"}`);
-    setText("#title-version", `v${s.version || "0.4.0"}`);
+    setText("#app-version", `v${s.version || "0.5.0"}`);
+    setText("#title-version", `v${s.version || "0.5.0"}`);
     $("#header-session").textContent = String(s.session_id || "--").slice(-12).toUpperCase();
     $("#header-agent").textContent = s.agent_bound ? String(io.agent || "bound").toUpperCase() : "UNBOUND";
     $("#header-qos").textContent = String(c.applied_qos || "monitor_only").replaceAll("_"," ").toUpperCase();
@@ -1162,6 +1166,14 @@
     setText("#metric-contraction", `${number(m.lyapunov_delta_total,5)} ΔV · ${number((m.contraction_confidence || 0) * 100,0)}%`);
     setText("#metric-trigger-density", `${number(m.trigger_density_per_minute,2)}/min`);
     setText("#trigger-copy", `Minimum inter-event time ${m.minimum_inter_event_ms != null ? `${m.minimum_inter_event_ms} ms` : "not yet observed"} · marginal intervals ${number((m.marginal_fraction || 0) * 100,0)}%.`);
+    setText("#metric-homeostatic-slack", `${number((m.homeostatic_slack || 0) * 100,1)}%`);
+    setText("#homeostatic-copy", `Ecosystem pressure ${number((m.ecosystem_pressure || 0) * 100,1)}% · latent pressure ${number((m.latent_pressure || 0) * 100,1)}% · target memory share ${m.target_memory_share != null ? `${number(m.target_memory_share * 100,2)}%` : "unknown"}.`);
+    setText("#metric-pressure-momentum", `${m.pressure_momentum_per_minute >= 0 ? "+" : ""}${number(m.pressure_momentum_per_minute,4)}/min`);
+    setText("#pressure-copy", m.pressure_momentum_per_minute > 0 ? "Pressure is accumulating across the current window." : "Pressure is flat or recovering across the current window.");
+    setText("#metric-recovery-balance", number(m.recovery_balance,3));
+    setText("#recovery-copy", `Recovery ${number(m.recovery_rate_per_second,4)}/s · accumulation ${number(m.accumulation_rate_per_second,4)}/s · half-life ${m.recovery_half_life_seconds != null ? `${number(m.recovery_half_life_seconds,1)} s` : "not yet resolved"}.`);
+    setText("#metric-resource-coupling", m.resource_coupling != null ? `${number(m.resource_coupling * 100,1)}%` : "--%");
+    setText("#coupling-copy", "Correlation of resource changes exposes coordinated motion; it does not prove which process caused it.");
 
     setText("#recording-label", s.recording ? "RECORDING" : "PAUSED"); setText("#record-duration", formatDuration(m.elapsed_seconds)); setText("#record-size", formatBytes(s.session_bytes)); setText("#record-samples", String(s.session_samples));
     $$('[data-action="recording-toggle"]').forEach(node => node.textContent = s.recording ? "Pause Recording" : "Start Recording");

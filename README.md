@@ -13,7 +13,7 @@
   [![Rust 1.75+](https://img.shields.io/badge/Rust-1.75%2B-111820?logo=rust&logoColor=white)](Cargo.toml)
   [![Windows Governor](https://img.shields.io/badge/Windows-process%20QoS-16c784?logo=windows11&logoColor=white)](#safety-is-the-feature)
   [![License: MIT](https://img.shields.io/badge/License-MIT-d9a441.svg)](LICENSE)
-  [![Version](https://img.shields.io/badge/version-0.4.0-16c784.svg)](Cargo.toml)
+  [![Version](https://img.shields.io/badge/version-0.5.0-16c784.svg)](Cargo.toml)
 </div>
 
 <p align="center">
@@ -52,7 +52,7 @@ every instant contract.
 
 That work is formalized in the canonical
 [Pulse-Feedback Stability Theory (PFP v2.0)](https://gist.github.com/jacksonjp0311-gif/8bd6b5446d6308d773ba71b88be36185).
-PulseFlow v0.4.0 turns its most useful ideas into inspectable compute-governance
+PulseFlow turns its most useful ideas into inspectable compute-governance
 signals:
 
 - bounded, event-triggered intervention rather than continuous unbounded force;
@@ -89,6 +89,100 @@ flowchart LR
 The feedback loop is deliberately asymmetric: observation is always available;
 control requires identity, verification, authority, and evidence.
 
+## The finding: the controlled object is the computational ecosystem
+
+A normal-activity recording revealed a boundary that process monitors hide:
+host RAM rose from roughly 86% to 91%, CPU produced several 95%+ bursts, and
+only part of that motion belonged to the selected browser PID. Controller
+effort remained low while estimated capacity remained high. The process was a
+visible participant, not the complete causal object.
+
+PulseFlow therefore treats the machine as a coupled computational ecosystem:
+
+```text
+human and workload pulses
+    + schedulers and process families
+    + resident memory, caches, and delayed work
+    + CPU, GPU, I/O, queues, and thermal state
+    + recovery between interventions
+    = the governed computational state
+```
+
+The working hypothesis is **computational homeostasis**:
+
+> A computer's useful capacity is not its unused CPU or RAM. It is its
+> measured ability to absorb another pulse of work and recover toward a stable
+> operating envelope without accumulating hidden pressure.
+
+This reserve is called **homeostatic slack**. For normalized observed resource
+pressures \(z_{i,t}\), PulseFlow first forms a bottleneck-aware ecosystem
+pressure:
+
+\[
+P_t = \frac{1}{2}\max_i(z_{i,t}) + \frac{1}{2N}\sum_{i=1}^{N} z_{i,t}
+\]
+
+Across a window \(W\), net accumulation and residual burden are:
+
+\[
+A_W = \max(0, P_{\mathrm{last}} - P_{\mathrm{first}}), \qquad
+L_W = \frac{1}{|W|}\sum_{t \in W}|r_t|
+\]
+
+The provisional homeostatic-slack estimator is:
+
+\[
+S_H(W) = \operatorname{clip}\left(
+1 - \overline{P}_W - A_W - L_W,\ 0,\ 1
+\right)
+\]
+
+The first session evaluated with this model produced:
+
+| Observable | Result |
+|---|---:|
+| Ecosystem pressure | 0.578 |
+| Latent pressure | 0.044 |
+| Homeostatic slack | 0.378 |
+| Pressure momentum | +0.0219 per minute |
+| Recovery balance | -0.055 |
+| Resource coupling | 0.228 |
+| Detected pulse recovery half-life | 2.10 seconds |
+| Selected Edge PID share of used host memory | 3.13% |
+
+This is the central finding: the selected process accounted for only a small
+part of the machine's resident-memory state. The target remained a valid
+authority boundary, but it was not an adequate causal model of the computer.
+The positive pressure momentum and slightly negative recovery balance showed
+that accumulation was narrowly outrunning recovery even though individual CPU
+pulses recovered quickly. One short session is an empirical anchor, not
+validation.
+
+This is deliberately conservative. High instantaneous headroom is discounted
+when pressure is still accumulating or prediction residue remains unresolved.
+PulseFlow also reports pressure momentum, recovery and accumulation velocity,
+recovery balance, pulse half-life when observable, resource coupling, and the
+selected target's share of used host memory.
+
+The theory is falsifiable. It fails or must be revised if \(S_H\) does not
+predict recovery after held-out workload pulses better than ordinary
+utilization, stall, and queue measurements; if the estimator cannot reproduce
+across comparable sessions; or if a policy driven by it increases tail
+latency, thrashing, thermal pressure, or recovery time.
+
+This does not claim that homeostasis or system pressure are unknown ideas.
+[IBM autonomic-computing research](https://research.ibm.com/publications/meta-dynamic-states-for-self-healing-autonomic-computing-systems)
+has modeled computing systems as dynamical systems with homeostatic behavior,
+and [Linux Pressure Stall Information](https://docs.kernel.org/accounting/psi.html)
+quantifies time lost to CPU, memory, and I/O contention. Network congestion
+control also demonstrates feedback-clocked admission and recovery. PulseFlow's
+specific contribution is the attempt to join these ideas into a local,
+whole-machine pulse/recovery formalism with explicit authority, residue,
+experiment epochs, and falsification boundaries.
+
+The full evolving formalism is documented in
+[Computational Homeostasis Theory](docs/COMPUTATIONAL_HOMEOSTASIS.md).
+
 ## What you get
 
 | Surface | Human meaning |
@@ -100,6 +194,7 @@ control requires identity, verification, authority, and evidence.
 | Analytics | Stability, prediction RMSE, aggregate contraction, contraction confidence, trigger density, dwell, thermal oscillation, energy, bursts, queue pressure, and full-session summaries |
 | Replay | Run candidate controller settings over saved observations without changing the live machine |
 | Futurist governor | Bounded pressure forecasts and confidence—not autonomous authority escalation |
+| Homeostasis field | Ecosystem pressure, latent pressure, homeostatic slack, recovery balance, pressure momentum, coupling, and pulse half-life |
 | Memory guard | Contracts background, token, retrieval, concurrency, and batch pressure above 85% RAM; serializes agent work above 95% |
 | Install experience | Branded executable, Start Menu entry, desktop shortcut, resilient launcher, favicon, and web-app manifest |
 

@@ -213,7 +213,7 @@ New-Item -Path $ReceiptDirectory -ItemType Directory -Force | Out-Null
 $ReceiptPath = Join-Path $ReceiptDirectory ('verification-{0}.json' -f (Get-Date -Format 'yyyyMMdd-HHmmss'))
 $Receipt = [ordered]@{
     schema = 'aria.pulseflow.verification-receipt/v1'
-    version = '0.4.0'
+    version = '0.5.0'
     timestamp_utc = [DateTime]::UtcNow.ToString('o')
     handshake_digest = [string]$Handshake.digest
     authority = 'none'

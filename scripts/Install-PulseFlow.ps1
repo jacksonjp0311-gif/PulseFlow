@@ -121,7 +121,7 @@ if ($DesktopShortcut) {
 
 $InstallRecord = [ordered]@{
     schema = 'pulseflow.installation.v1'
-    version = '0.4.0'
+    version = '0.5.0'
     installed_at_utc = [DateTime]::UtcNow.ToString('o')
     install_directory = $InstallDirectory
     executable = $InstalledBinary

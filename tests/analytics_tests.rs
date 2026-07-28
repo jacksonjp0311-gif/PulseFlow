@@ -103,3 +103,28 @@ fn comparison_enforces_minimum_evidence_boundary() {
     assert!((report.intervention_value_tokens_per_second - 2.0).abs() < 1e-9);
     assert_eq!(report.throughput_delta_percent, Some(10.0));
 }
+
+#[test]
+fn homeostatic_slack_contracts_when_ecosystem_pressure_accumulates() {
+    let stable: Vec<ObservationFrame> = (0..20)
+        .map(|index| frame(index + 1, 1_000 + index as u128 * 1_000, 20.0, 50.0, 0.01))
+        .collect();
+    let rising: Vec<ObservationFrame> = (0..20)
+        .map(|index| {
+            let mut observation = frame(index + 1, 1_000 + index as u128 * 1_000, 20.0, 50.0, 0.01);
+            observation.machine.ram_percent = 40.0 + index as f64 * 2.5;
+            observation.machine.ram_used_gb = 8.0 + index as f64 * 0.4;
+            observation
+        })
+        .collect();
+
+    let stable_summary = summarize_session("stable", &stable, 1e-6);
+    let rising_summary = summarize_session("rising", &rising, 1e-6);
+
+    assert!((0.0..=1.0).contains(&stable_summary.homeostatic_slack));
+    assert!((0.0..=1.0).contains(&rising_summary.homeostatic_slack));
+    assert!(rising_summary.homeostatic_slack < stable_summary.homeostatic_slack);
+    assert!(rising_summary.pressure_momentum_per_minute > 0.0);
+    assert!(rising_summary.latent_pressure > stable_summary.latent_pressure);
+    assert!(rising_summary.target_memory_share.is_some());
+}

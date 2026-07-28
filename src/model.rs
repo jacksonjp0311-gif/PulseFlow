@@ -274,6 +274,26 @@ pub struct RuntimeMetrics {
     pub trigger_density_per_minute: f64,
     /// Smallest observed time between applied QoS transitions.
     pub minimum_inter_event_ms: Option<u64>,
+    /// Bottleneck-aware pressure across host resources and workload delay.
+    pub ecosystem_pressure: f64,
+    /// Pressure not visible in the instantaneous resource vector: trend plus residue.
+    pub latent_pressure: f64,
+    /// Provisional reserve for accepting work and returning to the observed envelope.
+    pub homeostatic_slack: f64,
+    /// Signed net pressure velocity over the rolling window, per minute.
+    pub pressure_momentum_per_minute: f64,
+    /// Mean falling pressure velocity during recovery intervals.
+    pub recovery_rate_per_second: f64,
+    /// Mean rising pressure velocity during accumulation intervals.
+    pub accumulation_rate_per_second: f64,
+    /// Recovery versus accumulation balance in [-1, 1].
+    pub recovery_balance: f64,
+    /// Mean absolute correlation between changes in independently observed resources.
+    pub resource_coupling: Option<f64>,
+    /// Median measured time for a detected pressure pulse to recover halfway.
+    pub recovery_half_life_seconds: Option<f64>,
+    /// Selected target memory divided by total used host memory.
+    pub target_memory_share: Option<f64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -973,6 +993,16 @@ pub struct SessionSummary {
     pub marginal_fraction: f64,
     pub trigger_density_per_minute: f64,
     pub minimum_inter_event_ms: Option<u64>,
+    pub ecosystem_pressure: f64,
+    pub latent_pressure: f64,
+    pub homeostatic_slack: f64,
+    pub pressure_momentum_per_minute: f64,
+    pub recovery_rate_per_second: f64,
+    pub accumulation_rate_per_second: f64,
+    pub recovery_balance: f64,
+    pub resource_coupling: Option<f64>,
+    pub recovery_half_life_seconds: Option<f64>,
+    pub target_memory_share: Option<f64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]

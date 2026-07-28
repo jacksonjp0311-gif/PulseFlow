@@ -6,6 +6,12 @@ use std::collections::VecDeque;
 
 #[derive(Debug, Clone)]
 struct MetricSample {
+    timestamp_ms: u128,
+    cpu_percent: f64,
+    ram_percent: f64,
+    gpu_percent: Option<f64>,
+    ram_used_gb: f64,
+    process_memory_mb: Option<f64>,
     latency_ms: f64,
     tokens_per_second: f64,
     queue: f64,
@@ -14,8 +20,8 @@ struct MetricSample {
     filtered_stress: f64,
     setpoint: f64,
     residue: f64,
+    residue_memory: f64,
     applied_modulation: f64,
-    timestamp_ms: u128,
     applied_qos: QosLevel,
 }
 
@@ -72,6 +78,12 @@ impl AnalyticsEngine {
         }
 
         self.window.push_back(MetricSample {
+            timestamp_ms: frame.timestamp_ms,
+            cpu_percent: frame.machine.cpu_percent,
+            ram_percent: frame.machine.ram_percent,
+            gpu_percent: frame.machine.gpu_percent,
+            ram_used_gb: frame.machine.ram_used_gb,
+            process_memory_mb: frame.machine.process_memory_mb,
             latency_ms: frame.outcome.latency_ms.max(0.0),
             tokens_per_second: frame.outcome.tokens_per_second.max(0.0),
             queue: (frame.workload.input_queue + frame.workload.output_queue) as f64,
@@ -80,8 +92,8 @@ impl AnalyticsEngine {
             filtered_stress: frame.controller.filtered_stress,
             setpoint: frame.controller.setpoint,
             residue: frame.controller.residue,
+            residue_memory: frame.controller.residue_memory,
             applied_modulation: frame.controller.applied_modulation,
-            timestamp_ms: frame.timestamp_ms,
             applied_qos: frame.controller.applied_qos,
         });
         let capacity = self.config.rolling_window_samples.max(8);
@@ -178,6 +190,24 @@ impl AnalyticsEngine {
                 })
                 .collect::<Vec<_>>(),
         );
+        let homeostasis = homeostasis_metrics(
+            &self
+                .window
+                .iter()
+                .map(|sample| HomeostasisSample {
+                    timestamp_ms: sample.timestamp_ms,
+                    cpu_percent: sample.cpu_percent,
+                    ram_percent: sample.ram_percent,
+                    gpu_percent: sample.gpu_percent,
+                    temperature_c: sample.temperature_c,
+                    queue: sample.queue,
+                    latency_ms: sample.latency_ms,
+                    residue_memory: sample.residue_memory,
+                    ram_used_gb: sample.ram_used_gb,
+                    process_memory_mb: sample.process_memory_mb,
+                })
+                .collect::<Vec<_>>(),
+        );
 
         RuntimeMetrics {
             samples: self.samples,
@@ -220,6 +250,16 @@ impl AnalyticsEngine {
             marginal_fraction: pulse_metrics.marginal_fraction,
             trigger_density_per_minute: pulse_metrics.trigger_density_per_minute,
             minimum_inter_event_ms: pulse_metrics.minimum_inter_event_ms,
+            ecosystem_pressure: homeostasis.ecosystem_pressure,
+            latent_pressure: homeostasis.latent_pressure,
+            homeostatic_slack: homeostasis.homeostatic_slack,
+            pressure_momentum_per_minute: homeostasis.pressure_momentum_per_minute,
+            recovery_rate_per_second: homeostasis.recovery_rate_per_second,
+            accumulation_rate_per_second: homeostasis.accumulation_rate_per_second,
+            recovery_balance: homeostasis.recovery_balance,
+            resource_coupling: homeostasis.resource_coupling,
+            recovery_half_life_seconds: homeostasis.recovery_half_life_seconds,
+            target_memory_share: homeostasis.target_memory_share,
         }
     }
 }
@@ -232,6 +272,216 @@ struct PulseFeedbackMetrics {
     marginal_fraction: f64,
     trigger_density_per_minute: f64,
     minimum_inter_event_ms: Option<u64>,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct HomeostasisSample {
+    timestamp_ms: u128,
+    cpu_percent: f64,
+    ram_percent: f64,
+    gpu_percent: Option<f64>,
+    temperature_c: Option<f64>,
+    queue: f64,
+    latency_ms: f64,
+    residue_memory: f64,
+    ram_used_gb: f64,
+    process_memory_mb: Option<f64>,
+}
+
+#[derive(Debug, Clone, Copy, Default)]
+struct HomeostasisMetrics {
+    ecosystem_pressure: f64,
+    latent_pressure: f64,
+    homeostatic_slack: f64,
+    pressure_momentum_per_minute: f64,
+    recovery_rate_per_second: f64,
+    accumulation_rate_per_second: f64,
+    recovery_balance: f64,
+    resource_coupling: Option<f64>,
+    recovery_half_life_seconds: Option<f64>,
+    target_memory_share: Option<f64>,
+}
+
+fn homeostasis_metrics(samples: &[HomeostasisSample]) -> HomeostasisMetrics {
+    if samples.is_empty() {
+        return HomeostasisMetrics::default();
+    }
+    let pressures: Vec<f64> = samples.iter().map(ecosystem_pressure).collect();
+    let mean_pressure = mean(&pressures);
+    let duration_seconds = samples
+        .last()
+        .map(|last| last.timestamp_ms.saturating_sub(samples[0].timestamp_ms) as f64 / 1_000.0)
+        .unwrap_or(0.0);
+    let net_change = pressures.last().copied().unwrap_or(0.0) - pressures[0];
+    let pressure_momentum_per_minute = if duration_seconds > 0.0 {
+        net_change / duration_seconds * 60.0
+    } else {
+        0.0
+    };
+    let residue_burden = mean(
+        &samples
+            .iter()
+            .map(|sample| sample.residue_memory.abs())
+            .collect::<Vec<_>>(),
+    );
+    let latent_pressure = (net_change.max(0.0) + residue_burden).clamp(0.0, 1.0);
+    let homeostatic_slack = (1.0 - mean_pressure - latent_pressure).clamp(0.0, 1.0);
+
+    let mut recovery_rates = Vec::new();
+    let mut accumulation_rates = Vec::new();
+    for (sample_window, pressure_window) in samples.windows(2).zip(pressures.windows(2)) {
+        let dt = sample_window[1]
+            .timestamp_ms
+            .saturating_sub(sample_window[0].timestamp_ms) as f64
+            / 1_000.0;
+        if dt <= 0.0 {
+            continue;
+        }
+        let velocity = (pressure_window[1] - pressure_window[0]) / dt;
+        if velocity > 0.0 {
+            accumulation_rates.push(velocity);
+        } else if velocity < 0.0 {
+            recovery_rates.push(-velocity);
+        }
+    }
+    let recovery_rate = mean(&recovery_rates);
+    let accumulation_rate = mean(&accumulation_rates);
+    let recovery_balance = if recovery_rate + accumulation_rate > 1e-12 {
+        ((recovery_rate - accumulation_rate) / (recovery_rate + accumulation_rate)).clamp(-1.0, 1.0)
+    } else {
+        0.0
+    };
+
+    let channel_deltas = [
+        samples
+            .windows(2)
+            .map(|window| window[1].cpu_percent - window[0].cpu_percent)
+            .collect::<Vec<_>>(),
+        samples
+            .windows(2)
+            .map(|window| window[1].ram_percent - window[0].ram_percent)
+            .collect::<Vec<_>>(),
+        samples
+            .windows(2)
+            .filter_map(|window| Some(window[1].gpu_percent? - window[0].gpu_percent?))
+            .collect::<Vec<_>>(),
+    ];
+    let mut correlations = Vec::new();
+    for left in 0..channel_deltas.len() {
+        for right in (left + 1)..channel_deltas.len() {
+            if let Some(correlation) =
+                pearson_correlation(&channel_deltas[left], &channel_deltas[right])
+            {
+                correlations.push(correlation.abs());
+            }
+        }
+    }
+    let resource_coupling = (!correlations.is_empty()).then(|| mean(&correlations));
+    let recovery_half_life_seconds = recovery_half_life(samples, &pressures);
+    let target_memory_share = {
+        let shares: Vec<f64> = samples
+            .iter()
+            .filter_map(|sample| {
+                let used_mb = sample.ram_used_gb * 1_024.0;
+                sample
+                    .process_memory_mb
+                    .filter(|_| used_mb > 0.0)
+                    .map(|process_mb| (process_mb / used_mb).clamp(0.0, 1.0))
+            })
+            .collect();
+        (!shares.is_empty()).then(|| mean(&shares))
+    };
+
+    HomeostasisMetrics {
+        ecosystem_pressure: mean_pressure,
+        latent_pressure,
+        homeostatic_slack,
+        pressure_momentum_per_minute,
+        recovery_rate_per_second: recovery_rate,
+        accumulation_rate_per_second: accumulation_rate,
+        recovery_balance,
+        resource_coupling,
+        recovery_half_life_seconds,
+        target_memory_share,
+    }
+}
+
+fn ecosystem_pressure(sample: &HomeostasisSample) -> f64 {
+    let mut channels = vec![
+        (sample.cpu_percent / 100.0).clamp(0.0, 1.0),
+        (sample.ram_percent / 100.0).clamp(0.0, 1.0),
+        (sample.queue / 64.0).clamp(0.0, 1.0),
+        (sample.latency_ms / 2_000.0).clamp(0.0, 1.0),
+    ];
+    if let Some(gpu) = sample.gpu_percent {
+        channels.push((gpu / 100.0).clamp(0.0, 1.0));
+    }
+    if let Some(temperature) = sample.temperature_c {
+        channels.push(((temperature - 40.0) / 45.0).clamp(0.0, 1.0));
+    }
+    let bottleneck = channels.iter().copied().fold(0.0, f64::max);
+    (0.5 * bottleneck + 0.5 * mean(&channels)).clamp(0.0, 1.0)
+}
+
+fn pearson_correlation(left: &[f64], right: &[f64]) -> Option<f64> {
+    let length = left.len().min(right.len());
+    if length < 8 {
+        return None;
+    }
+    let left = &left[left.len() - length..];
+    let right = &right[right.len() - length..];
+    let left_mean = mean(left);
+    let right_mean = mean(right);
+    let mut numerator = 0.0;
+    let mut left_energy = 0.0;
+    let mut right_energy = 0.0;
+    for (left_value, right_value) in left.iter().zip(right) {
+        let left_delta = left_value - left_mean;
+        let right_delta = right_value - right_mean;
+        numerator += left_delta * right_delta;
+        left_energy += left_delta * left_delta;
+        right_energy += right_delta * right_delta;
+    }
+    let denominator = (left_energy * right_energy).sqrt();
+    (denominator > 1e-12).then(|| (numerator / denominator).clamp(-1.0, 1.0))
+}
+
+fn recovery_half_life(samples: &[HomeostasisSample], pressures: &[f64]) -> Option<f64> {
+    if samples.len() < 8 || samples.len() != pressures.len() {
+        return None;
+    }
+    let mut half_lives = Vec::new();
+    for peak in 2..pressures.len().saturating_sub(1) {
+        if pressures[peak] < pressures[peak - 1] || pressures[peak] <= pressures[peak + 1] {
+            continue;
+        }
+        let baseline_start = peak.saturating_sub(5);
+        let baseline = pressures[baseline_start..peak]
+            .iter()
+            .copied()
+            .fold(f64::INFINITY, f64::min);
+        let amplitude = pressures[peak] - baseline;
+        if amplitude < 0.05 {
+            continue;
+        }
+        let halfway = baseline + amplitude * 0.5;
+        if let Some(recovered) =
+            ((peak + 1)..pressures.len()).find(|index| pressures[*index] <= halfway)
+        {
+            let seconds = samples[recovered]
+                .timestamp_ms
+                .saturating_sub(samples[peak].timestamp_ms) as f64
+                / 1_000.0;
+            if seconds > 0.0 {
+                half_lives.push(seconds);
+            }
+        }
+    }
+    if half_lives.is_empty() {
+        None
+    } else {
+        Some(percentile(&half_lives, 0.5))
+    }
 }
 
 fn pulse_feedback_metrics(samples: &[(u128, f64, f64, QosLevel)]) -> PulseFeedbackMetrics {
@@ -619,6 +869,23 @@ pub fn summarize_session(
             })
             .collect::<Vec<_>>(),
     );
+    let homeostasis = homeostasis_metrics(
+        &frames
+            .iter()
+            .map(|frame| HomeostasisSample {
+                timestamp_ms: frame.timestamp_ms,
+                cpu_percent: frame.machine.cpu_percent,
+                ram_percent: frame.machine.ram_percent,
+                gpu_percent: frame.machine.gpu_percent,
+                temperature_c: frame.machine.gpu_temperature_c,
+                queue: (frame.workload.input_queue + frame.workload.output_queue) as f64,
+                latency_ms: frame.outcome.latency_ms,
+                residue_memory: frame.controller.residue_memory,
+                ram_used_gb: frame.machine.ram_used_gb,
+                process_memory_mb: frame.machine.process_memory_mb,
+            })
+            .collect::<Vec<_>>(),
+    );
     let mut modes: Vec<String> = frames
         .iter()
         .map(|frame| format!("{:?}", frame.action.mode).to_lowercase())
@@ -690,6 +957,16 @@ pub fn summarize_session(
         marginal_fraction: pulse_metrics.marginal_fraction,
         trigger_density_per_minute: pulse_metrics.trigger_density_per_minute,
         minimum_inter_event_ms: pulse_metrics.minimum_inter_event_ms,
+        ecosystem_pressure: homeostasis.ecosystem_pressure,
+        latent_pressure: homeostasis.latent_pressure,
+        homeostatic_slack: homeostasis.homeostatic_slack,
+        pressure_momentum_per_minute: homeostasis.pressure_momentum_per_minute,
+        recovery_rate_per_second: homeostasis.recovery_rate_per_second,
+        accumulation_rate_per_second: homeostasis.accumulation_rate_per_second,
+        recovery_balance: homeostasis.recovery_balance,
+        resource_coupling: homeostasis.resource_coupling,
+        recovery_half_life_seconds: homeostasis.recovery_half_life_seconds,
+        target_memory_share: homeostasis.target_memory_share,
     }
 }
 

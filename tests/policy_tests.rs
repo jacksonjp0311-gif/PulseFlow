@@ -34,6 +34,8 @@ fn stable_metrics() -> RuntimeMetrics {
     RuntimeMetrics {
         samples: 400,
         flow_stability: 0.95,
+        homeostatic_slack: 0.80,
+        recovery_balance: 0.50,
         ..RuntimeMetrics::default()
     }
 }
@@ -69,6 +71,8 @@ fn high_memory_pressure_blocks_background_work_and_contracts_capacity() {
     assert_eq!(high.model_route, "efficient");
     assert!(high.recommended_concurrency < low.recommended_concurrency);
     assert!(high.recommended_batch_size < low.recommended_batch_size);
+    assert!(high.recommended_concurrency <= 4);
+    assert!(high.recommended_batch_size <= 32);
     assert!(high.reason.contains("Memory pressure"));
 }
 
