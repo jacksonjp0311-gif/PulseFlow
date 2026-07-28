@@ -279,8 +279,8 @@
                   },
                   {
                       "path":  "scripts/ARIA-Handshake.ps1",
-                      "bytes":  2863,
-                      "sha256":  "67f614b7de88f12af7d28ab8d064e5f8d3b941c37cb0e35b753f054a06f9720f"
+                      "bytes":  2789,
+                      "sha256":  "955740023dd150f55f2b19747ba26c02e11ab3b942dbeef5c3fc1fc00a6e1e2f"
                   },
                   {
                       "path":  "scripts/ARIA-Smoke.ps1",
