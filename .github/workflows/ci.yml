@@ -1,0 +1,23 @@
+name: PulseFlow CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.85.1
+        with:
+          components: rustfmt, clippy
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: ARIA verification
+        shell: powershell
+        run: .\scripts\ARIA-Verify.ps1 -SkipSmoke
+      - name: ARIA live smoke
+        shell: powershell
+        run: .\scripts\ARIA-Smoke.ps1

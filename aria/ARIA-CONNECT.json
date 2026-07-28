@@ -1,0 +1,51 @@
+{
+  "schema": "aria.pulseflow.connection/v1",
+  "protocol": [
+    "discover",
+    "orient",
+    "verify",
+    "align",
+    "propose"
+  ],
+  "read_order": [
+    "README.md",
+    "aria/README.md",
+    "aria/pulseflow.aria",
+    "schemas/pulseflow-api.contract.json",
+    "schemas/ui-actions.json",
+    "schemas/powershell-runtime.contract.json",
+    "MANIFEST.json"
+  ],
+  "commands": {
+    "handshake": ".\\scripts\\ARIA-Handshake.ps1 -Json",
+    "verify": ".\\scripts\\PulseFlow-All-One.ps1 -Mode Verify",
+    "serve": ".\\scripts\\PulseFlow-All-One.ps1 -Mode Serve",
+    "static": "python scripts/ARIA-Static.py"
+  },
+  "authority": {
+    "initial": "none",
+    "meaning": "Successful discovery and verification do not authorize repository mutation or live adaptive gain writes.",
+    "mutation_boundary": "Explicit operator action plus a bounded repair or tuning contract and passing verification receipt.",
+    "adaptive_boundary": "allow_bounded_adaptation remains false unless the operator explicitly changes configuration.",
+    "verification_mutation": "Verification is read-only for source files; cargo formatting is checked but not applied.",
+    "runtime_control_boundary": "System telemetry is observational. Process control requires operator selection, explicit connect, verification, and explicit enable."
+  },
+  "next_boundary": "verify",
+  "runtime_interlink": {
+    "protocol": "pulseflow.interlink.v1",
+    "phases": [
+      "discover",
+      "select",
+      "connect",
+      "verify",
+      "enable"
+    ],
+    "initial_authority": "none",
+    "enabled_authority": "one operator-selected process",
+    "verification_endpoint": "GET /api/interlink/verify",
+    "agent_channels": [
+      "POST /api/signal",
+      "GET /api/directive"
+    ]
+  }
+}

@@ -1,0 +1,7 @@
+/target/
+/dist/
+/work/
+/state/
+*.tmp
+.DS_Store
+Thumbs.db

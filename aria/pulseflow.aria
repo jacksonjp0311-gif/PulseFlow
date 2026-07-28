@@ -1,0 +1,19 @@
+◆ PULSEFLOW_VERIFY_AND_PROMOTE
+│
+├─ ◈ discover aria.connection.identity
+├─ ◈ orient human.read_order + machine.contracts
+├─ ◈ verify initial.authority = none
+├─ ◈ verify content.addressed.manifest
+├─ ◈ verify powershell.5_1 ascii + parser + semantic.string.boundaries
+├─ ◈ require repository.lattice
+├─ ◈ parse config + schemas + api.contract
+├─ ◈ assert ui.actions ↔ javascript.handlers ↔ rust.routes
+├─ ◈ check rust.format without mutation
+├─ ◈ compile rust.all_targets
+├─ ◈ test controller + analytics + storage + replay + ui.contract
+├─ ◈ build release
+├─ ◈ launch localhost.verify_instance
+├─ ◈ construct URI through bounded path + query builder
+├─ ◈ exercise every HTTP-backed operator action
+├─ ◈ retain verification.receipt + handshake.digest
+└─ ◆ promote only when every stage returns zero

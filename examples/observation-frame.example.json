@@ -1,0 +1,120 @@
+{
+  "schema_version": "pulseflow.observation.v1",
+  "session_id": "perci-20260725-001",
+  "sequence": 42,
+  "timestamp_ms": 1785023400000,
+  "workload": {
+    "source": "perci-runtime",
+    "agent": "perci",
+    "task_type": "coding",
+    "model": "phi-4-mini",
+    "context_tokens": 12480,
+    "input_queue": 3,
+    "output_queue": 1,
+    "busy": true,
+    "signal_fresh": true
+  },
+  "machine": {
+    "cpu_percent": 71.4,
+    "ram_percent": 63.2,
+    "ram_used_gb": 20.2,
+    "ram_total_gb": 31.9,
+    "gpu_percent": 82.0,
+    "gpu_temperature_c": 74.0,
+    "gpu_power_w": 47.8,
+    "gpu_memory_used_mb": 1840.0,
+    "gpu_memory_total_mb": 4096.0,
+    "process_cpu_percent": 38.1,
+    "process_memory_mb": 1840.0,
+    "process_alive": true
+  },
+  "controller": {
+    "raw_stress": 0.74,
+    "filtered_stress": 0.69,
+    "setpoint": 0.66,
+    "error": -0.03,
+    "integral": -0.12,
+    "derivative": -0.01,
+    "predicted_stress": 0.71,
+    "residue": 0.03,
+    "residue_memory": 0.021,
+    "modulation": 0.58,
+    "jitter": 0.05,
+    "phase": "contract",
+    "reason": "Observed stress exceeded prediction; residual memory is reducing the next pulse.",
+    "requested_qos": "normal",
+    "applied_qos": "normal",
+    "transition_count": 3
+  },
+  "action": {
+    "mode": "balanced",
+    "governor_active": true,
+    "requested_qos": "normal",
+    "applied_qos": "normal",
+    "modulation_authority": 0.58,
+    "learning_stage": "shadow",
+    "directive": {
+      "authority": 0.58,
+      "recommended_concurrency": 3,
+      "recommended_batch_size": 6,
+      "allow_background_memory_work": false,
+      "model_route": "efficient",
+      "token_budget_scale": 0.65,
+      "retrieval_depth_scale": 0.6,
+      "shadow_only": true,
+      "reason": "Positive load, latency, or residual pressure is present."
+    },
+    "adaptive_suggestion": {
+      "based_on_samples": 42,
+      "eligible": false,
+      "applied": false,
+      "confidence": 0.14,
+      "proposed_tuning": null,
+      "deltas": {
+        "kp": 0.0,
+        "ki": 0.0,
+        "kd": 0.0,
+        "kr": 0.0,
+        "residue_decay": 0.0,
+        "filter_alpha": 0.0,
+        "slew_per_sample": 0.0
+      },
+      "reason": "Waiting for the next bounded tuning checkpoint."
+    }
+  },
+  "residue": {
+    "predicted_stress": 0.71,
+    "observed_stress": 0.74,
+    "residue": 0.03,
+    "residue_memory": 0.021,
+    "squared_prediction_error": 0.0009
+  },
+  "outcome": {
+    "observed_at_ms": 1785023401000,
+    "horizon_ms": 1000,
+    "alignment": "next_interval",
+    "latency_ms": 816.0,
+    "tokens_per_second": 31.5,
+    "completed_units": 1,
+    "success": true,
+    "estimated_tokens_this_interval": 31.5
+  },
+  "metrics": {
+    "samples": 42,
+    "elapsed_seconds": 42.0,
+    "average_tokens_per_second": 30.8,
+    "completed_units": 42,
+    "throughput_units_per_second": 1.0,
+    "flow_stability": 0.91,
+    "thermal_oscillation_c": 1.8,
+    "prediction_rmse": 0.028,
+    "cumulative_gpu_energy_joules": 1950.0,
+    "energy_per_token_joules": 1.51,
+    "intervention_value": null,
+    "policy_confidence": 0.14,
+    "latency_mean_ms": 790.0,
+    "latency_p95_ms": 920.0,
+    "queue_mean": 3.4,
+    "stress_mean": 0.67
+  }
+}

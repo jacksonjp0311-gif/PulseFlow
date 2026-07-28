@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pulseflow.local/schemas/agent-directive.schema.json",
+  "title": "PulseFlow Agent Directive",
+  "type": "object",
+  "required": ["authority","recommended_concurrency","recommended_batch_size","allow_background_memory_work","model_route","token_budget_scale","retrieval_depth_scale","shadow_only","reason"],
+  "properties": {
+    "authority":{"type":"number","minimum":0,"maximum":1},
+    "recommended_concurrency":{"type":"integer","minimum":1},
+    "recommended_batch_size":{"type":"integer","minimum":1},
+    "allow_background_memory_work":{"type":"boolean"},
+    "model_route":{"enum":["efficient","balanced","performance"]},
+    "token_budget_scale":{"type":"number","minimum":0,"maximum":1},
+    "retrieval_depth_scale":{"type":"number","minimum":0,"maximum":1},
+    "shadow_only":{"type":"boolean"},
+    "reason":{"type":"string","minLength":1}
+  },
+  "additionalProperties": false
+}

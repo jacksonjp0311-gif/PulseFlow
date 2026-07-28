@@ -1,0 +1,155 @@
+{
+  "contract_version": "pulseflow.api.v1",
+  "base_url": "http://127.0.0.1:8791",
+  "transport": "HTTP/1.1 localhost",
+  "endpoints": [
+    {
+      "method": "GET",
+      "path": "/api/status",
+      "purpose": "Current telemetry, controller, metrics, recording, stage, and directive state."
+    },
+    {
+      "method": "GET",
+      "path": "/api/history?limit=N",
+      "purpose": "Recent finalized observation frames retained by the runtime."
+    },
+    {
+      "method": "GET",
+      "path": "/api/interlink/handshake",
+      "purpose": "Deterministic local pairing/discovery contract for applications and agents."
+    },
+    {
+      "method": "GET",
+      "path": "/api/processes",
+      "purpose": "Discover visible local processes available for operator-selected governance."
+    },
+    {
+      "method": "POST",
+      "path": "/api/interlink/connect",
+      "purpose": "Connect a selected process with authority paused pending explicit enable."
+    },
+    {
+      "method": "POST",
+      "path": "/api/interlink/baseline",
+      "purpose": "Start a clean recorded baseline session with process modulation paused."
+    },
+    {
+      "method": "POST",
+      "path": "/api/interlink/enable",
+      "purpose": "Start a clean governed session and arm bounded process QoS modulation."
+    },
+    {
+      "method": "POST",
+      "path": "/api/interlink/disconnect",
+      "purpose": "Remove process authority while preserving host telemetry and recording."
+    },
+    {
+      "method": "GET",
+      "path": "/api/interlink/verify",
+      "purpose": "Read the current truth-derived authority attestation without promoting state."
+    },
+    {
+      "method": "POST",
+      "path": "/api/interlink/verify",
+      "purpose": "Validate target identity and governor capability, then promote CONNECTED to VERIFIED with an evidence receipt."
+    },
+    {
+      "method": "POST",
+      "path": "/api/signal",
+      "purpose": "Agent/workload input and output pressure signal."
+    },
+    {
+      "method": "GET",
+      "path": "/api/directive",
+      "purpose": "Latest resource-homeostasis recommendation."
+    },
+    {
+      "method": "GET",
+      "path": "/api/sessions",
+      "purpose": "Saved JSONL session metadata."
+    },
+    {
+      "method": "GET",
+      "path": "/api/session/{session_id}?limit=N",
+      "purpose": "Persisted observation frames."
+    },
+    {
+      "method": "GET",
+      "path": "/api/summary/{session_id}",
+      "purpose": "Derived full-session metrics."
+    },
+    {
+      "method": "GET",
+      "path": "/api/export/{session_id}",
+      "purpose": "Raw JSONL download."
+    },
+    {
+      "method": "POST",
+      "path": "/api/replay",
+      "purpose": "Recompute a candidate controller trace over recorded observations."
+    },
+    {
+      "method": "POST",
+      "path": "/api/compare",
+      "purpose": "Descriptive baseline/candidate comparison with evidence boundary."
+    },
+    {
+      "method": "POST",
+      "path": "/api/mode",
+      "purpose": "Select quiet, balanced, or performance setpoint."
+    },
+    {
+      "method": "POST",
+      "path": "/api/control",
+      "purpose": "Start, pause, or reset runtime control/session."
+    },
+    {
+      "method": "POST",
+      "path": "/api/recording",
+      "purpose": "Enable or pause JSONL frame persistence."
+    },
+    {
+      "method": "POST",
+      "path": "/api/learning-stage",
+      "purpose": "Select recorder, analytics, replay, shadow, bounded_adaptive, or agent_policy stage."
+    },
+    {
+      "method": "POST",
+      "path": "/api/tuning",
+      "purpose": "Apply backend-clamped runtime controller parameters."
+    },
+    {
+      "method": "GET",
+      "path": "/api/ledger/tail?limit=N",
+      "purpose": "Persistent state-transition event tail."
+    },
+    {
+      "method": "GET",
+      "path": "/health",
+      "purpose": "Liveness probe."
+    }
+  ],
+  "causal_alignment": {
+    "state_action_time": "timestamp_ms",
+    "outcome_time": "outcome.observed_at_ms",
+    "horizon": "outcome.horizon_ms",
+    "rule": "The outcome in frame t is finalized from the next telemetry interval rather than copied from the same instant as the selected action."
+  },
+  "interlink": {
+    "protocol": "pulseflow.interlink.v1",
+    "phases": [
+      "discover",
+      "select",
+      "connect",
+      "verify",
+      "enable"
+    ],
+    "host_scope": "localhost",
+    "authority": "process-scoped",
+    "agent_integration": {
+      "signal": "POST /api/signal",
+      "directive": "GET /api/directive"
+    },
+    "remote_exposure": "disabled by default"
+  }
+}

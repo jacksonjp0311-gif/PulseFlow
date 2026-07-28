@@ -1,0 +1,27 @@
+{
+  "schema": "aria-repair-receipt/v1",
+  "project": "pulseflow-governor",
+  "version": "0.2.2",
+  "date": "2026-07-27",
+  "wound": {
+    "compiler": "rustc",
+    "code": "E0505",
+    "location": "src/main.rs:53",
+    "diagnostic": "config.bind was borrowed while config was moved into server::serve"
+  },
+  "repair": {
+    "before": "server::serve(&config.bind, state, config)",
+    "after": [
+      "let bind = config.bind.clone();",
+      "server::serve(&bind, state, config)"
+    ],
+    "scope": ["src/main.rs", "Cargo.toml", "README.md", "BUILD-STATUS.md", "MANIFEST.json"],
+    "rollback": "scripts/Repair-PulseFlow-v0.2.2-ARIA-E0505.ps1 -Rollback"
+  },
+  "verification": {
+    "local_static": "pass",
+    "rust_compile_in_packaging_environment": "not-run-rust-toolchain-unavailable",
+    "required_target_command": ".\\scripts\\PulseFlow-All-One.ps1 -Mode Verify",
+    "promotion_state": "candidate-awaiting-target-verification"
+  }
+}

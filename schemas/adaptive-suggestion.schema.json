@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pulseflow.local/schemas/adaptive-suggestion.schema.json",
+  "title": "PulseFlow Adaptive Suggestion",
+  "type": "object",
+  "required": [
+    "based_on_samples",
+    "eligible",
+    "applied",
+    "confidence",
+    "proposed_tuning",
+    "deltas",
+    "reason"
+  ],
+  "properties": {
+    "based_on_samples": {"type": "integer", "minimum": 0},
+    "eligible": {"type": "boolean"},
+    "applied": {"type": "boolean"},
+    "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+    "proposed_tuning": {
+      "type": ["object", "null"],
+      "properties": {
+        "quiet_setpoint": {"type": "number", "minimum": 0.1, "maximum": 0.9},
+        "balanced_setpoint": {"type": "number", "minimum": 0.1, "maximum": 0.95},
+        "performance_setpoint": {"type": "number", "minimum": 0.1, "maximum": 0.98},
+        "kp": {"type": "number", "minimum": 0, "maximum": 2},
+        "ki": {"type": "number", "minimum": 0, "maximum": 1},
+        "kd": {"type": "number", "minimum": 0, "maximum": 1},
+        "kr": {"type": "number", "minimum": 0, "maximum": 2},
+        "residue_decay": {"type": "number", "minimum": 0, "maximum": 0.999},
+        "filter_alpha": {"type": "number", "minimum": 0.01, "maximum": 1},
+        "slew_per_sample": {"type": "number", "minimum": 0.001, "maximum": 0.25}
+      },
+      "required": ["quiet_setpoint","balanced_setpoint","performance_setpoint","kp","ki","kd","kr","residue_decay","filter_alpha","slew_per_sample"],
+      "additionalProperties": false
+    },
+    "deltas": {
+      "type": "object",
+      "required": ["kp","ki","kd","kr","residue_decay","filter_alpha","slew_per_sample"],
+      "additionalProperties": {"type": "number"}
+    },
+    "reason": {"type": "string"}
+  },
+  "additionalProperties": false
+}

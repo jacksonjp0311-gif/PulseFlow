@@ -1,0 +1,227 @@
+{
+  "schema_version": "pulseflow.ui-actions.v1",
+  "actions": [
+    {
+      "id": "control-start",
+      "kind": "http",
+      "method": "POST",
+      "route": "/api/control"
+    },
+    {
+      "id": "control-pause",
+      "kind": "http",
+      "method": "POST",
+      "route": "/api/control"
+    },
+    {
+      "id": "control-reset",
+      "kind": "http",
+      "method": "POST",
+      "route": "/api/control"
+    },
+    {
+      "id": "system-link-verify",
+      "kind": "http",
+      "method": "POST",
+      "route": "/api/interlink/verify"
+    },
+    {
+      "id": "interlink-process-refresh",
+      "kind": "http",
+      "method": "GET",
+      "route": "/api/processes"
+    },
+    {
+      "id": "interlink-connect",
+      "kind": "http",
+      "method": "POST",
+      "route": "/api/interlink/connect"
+    },
+    {
+      "id": "interlink-baseline",
+      "kind": "http",
+      "method": "POST",
+      "route": "/api/interlink/baseline"
+    },
+    {
+      "id": "interlink-enable",
+      "kind": "http",
+      "method": "POST",
+      "route": "/api/interlink/enable"
+    },
+    {
+      "id": "interlink-disconnect",
+      "kind": "http",
+      "method": "POST",
+      "route": "/api/interlink/disconnect"
+    },
+    {
+      "id": "mode-quiet",
+      "kind": "http",
+      "method": "POST",
+      "route": "/api/mode"
+    },
+    {
+      "id": "mode-balanced",
+      "kind": "http",
+      "method": "POST",
+      "route": "/api/mode"
+    },
+    {
+      "id": "mode-performance",
+      "kind": "http",
+      "method": "POST",
+      "route": "/api/mode"
+    },
+    {
+      "id": "recording-toggle",
+      "kind": "http",
+      "method": "POST",
+      "route": "/api/recording"
+    },
+    {
+      "id": "session-new",
+      "kind": "http",
+      "method": "POST",
+      "route": "/api/session/new"
+    },
+    {
+      "id": "session-refresh",
+      "kind": "http",
+      "method": "GET",
+      "route": "/api/sessions"
+    },
+    {
+      "id": "session-load",
+      "kind": "http",
+      "method": "GET",
+      "route": "/api/session/"
+    },
+    {
+      "id": "session-live",
+      "kind": "http",
+      "method": "GET",
+      "route": "/api/history"
+    },
+    {
+      "id": "session-export",
+      "kind": "http",
+      "method": "GET",
+      "route": "/api/export/"
+    },
+    {
+      "id": "replay-load",
+      "kind": "http",
+      "method": "GET",
+      "route": "/api/session/"
+    },
+    {
+      "id": "replay-run",
+      "kind": "http",
+      "method": "POST",
+      "route": "/api/replay"
+    },
+    {
+      "id": "analytics-compare",
+      "kind": "http",
+      "method": "POST",
+      "route": "/api/compare"
+    },
+    {
+      "id": "replay-first",
+      "kind": "local"
+    },
+    {
+      "id": "replay-back",
+      "kind": "local"
+    },
+    {
+      "id": "replay-play",
+      "kind": "local"
+    },
+    {
+      "id": "replay-pause",
+      "kind": "local"
+    },
+    {
+      "id": "replay-forward",
+      "kind": "local"
+    },
+    {
+      "id": "replay-last",
+      "kind": "local"
+    },
+    {
+      "id": "tuning-apply",
+      "kind": "http",
+      "method": "POST",
+      "route": "/api/tuning"
+    },
+    {
+      "id": "stage-recorder",
+      "kind": "http",
+      "method": "POST",
+      "route": "/api/learning-stage"
+    },
+    {
+      "id": "stage-analytics",
+      "kind": "http",
+      "method": "POST",
+      "route": "/api/learning-stage"
+    },
+    {
+      "id": "stage-replay",
+      "kind": "http",
+      "method": "POST",
+      "route": "/api/learning-stage"
+    },
+    {
+      "id": "stage-shadow",
+      "kind": "http",
+      "method": "POST",
+      "route": "/api/learning-stage"
+    },
+    {
+      "id": "stage-bounded_adaptive",
+      "kind": "http",
+      "method": "POST",
+      "route": "/api/learning-stage"
+    },
+    {
+      "id": "stage-agent_policy",
+      "kind": "http",
+      "method": "POST",
+      "route": "/api/learning-stage"
+    },
+    {
+      "id": "logs-refresh",
+      "kind": "http",
+      "method": "GET",
+      "route": "/api/ledger/tail"
+    }
+  ],
+  "tabs": [
+    "telemetry",
+    "modulation",
+    "dataset",
+    "agent",
+    "analytics",
+    "replay",
+    "logs",
+    "config"
+  ],
+  "live_controls": [
+    "process-select",
+    "chart-window",
+    "replay-range",
+    "replay-speed",
+    "tune-balanced_setpoint",
+    "tune-kp",
+    "tune-ki",
+    "tune-kd",
+    "tune-kr",
+    "tune-residue_decay",
+    "tune-filter_alpha",
+    "tune-slew_per_sample"
+  ]
+}

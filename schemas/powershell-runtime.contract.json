@@ -1,0 +1,26 @@
+{
+  "schema": "aria.pulseflow.powershell-runtime/v1",
+  "target_glob": "scripts/*.ps1",
+  "rules": {
+    "ascii_safe": true,
+    "strict_mode_required": true,
+    "parse_with_system_management_automation": true,
+    "forbidden_patterns": [
+      {
+        "id": "ambiguous-query-interpolation",
+        "regex": "\"[^\"\\r\\n]*\\$[A-Za-z_][A-Za-z0-9_]*\\?",
+        "meaning": "An expandable string may bind the query suffix to the variable token under Windows PowerShell 5.1."
+      }
+    ]
+  },
+  "smoke_script": {
+    "path": "scripts/ARIA-Smoke.ps1",
+    "required_markers": [
+      "function New-ApiUri",
+      "[Uri]::EscapeDataString",
+      "Set-StrictMode -Version 2.0",
+      "Invoke-ApiGet",
+      "Invoke-ApiPost"
+    ]
+  }
+}

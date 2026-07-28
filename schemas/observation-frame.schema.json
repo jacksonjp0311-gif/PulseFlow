@@ -1,0 +1,278 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pulseflow.local/schemas/observation-frame.schema.json",
+  "title": "PulseFlow Observation Frame",
+  "description": "One finalized D_t = (X_t, A_t, R_t, Y_{t+Delta}) record.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "session_id",
+    "sequence",
+    "timestamp_ms",
+    "workload",
+    "machine",
+    "controller",
+    "action",
+    "residue",
+    "outcome",
+    "metrics"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "pulseflow.observation.v2"
+    },
+    "session_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "timestamp_ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "workload": {
+      "type": "object",
+      "required": [
+        "source",
+        "agent",
+        "task_type",
+        "model",
+        "context_tokens",
+        "input_queue",
+        "output_queue",
+        "busy",
+        "signal_fresh"
+      ],
+      "properties": {
+        "source": {
+          "type": "string"
+        },
+        "agent": {
+          "type": "string"
+        },
+        "task_type": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "context_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "input_queue": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "output_queue": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "busy": {
+          "type": "boolean"
+        },
+        "signal_fresh": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": true
+    },
+    "machine": {
+      "type": "object",
+      "required": [
+        "cpu_percent",
+        "ram_percent",
+        "ram_used_gb",
+        "ram_total_gb"
+      ],
+      "properties": {
+        "cpu_percent": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "ram_percent": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "ram_used_gb": {
+          "type": "number",
+          "minimum": 0
+        },
+        "ram_total_gb": {
+          "type": "number",
+          "minimum": 0
+        },
+        "gpu_percent": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "gpu_temperature_c": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "gpu_power_w": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "process_cpu_percent": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "process_memory_mb": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "process_alive": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "controller": {
+      "type": "object",
+      "required": ["raw_stress", "filtered_stress", "control_authority", "applied_modulation", "forecast_stress", "forecast_confidence"],
+      "properties": {
+        "raw_stress": {"type":"number","minimum":0,"maximum":1},
+        "filtered_stress": {"type":"number","minimum":0,"maximum":1},
+        "control_authority": {"type":"number","minimum":0,"maximum":1},
+        "applied_modulation": {"type":"number","minimum":0,"maximum":1},
+        "forecast_stress": {"type":"number","minimum":0,"maximum":1},
+        "forecast_confidence": {"type":"number","minimum":0,"maximum":1}
+      },
+      "additionalProperties": true
+    },
+    "action": {
+      "type": "object",
+      "required": [
+        "mode",
+        "governor_active",
+        "requested_qos",
+        "applied_qos",
+        "modulation_authority",
+        "applied_modulation",
+        "learning_stage",
+        "directive",
+        "adaptive_suggestion"
+      ],
+      "properties": {
+        "mode": {
+          "enum": [
+            "quiet",
+            "balanced",
+            "performance"
+          ]
+        },
+        "governor_active": {
+          "type": "boolean"
+        },
+        "requested_qos": {
+          "type": "string"
+        },
+        "applied_qos": {
+          "type": "string"
+        },
+        "modulation_authority": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "applied_modulation": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "learning_stage": {
+          "enum": [
+            "recorder",
+            "analytics",
+            "replay",
+            "shadow",
+            "bounded_adaptive",
+            "agent_policy"
+          ]
+        },
+        "directive": {
+          "type": "object"
+        },
+        "adaptive_suggestion": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    "residue": {
+      "type": "object"
+    },
+    "outcome": {
+      "type": "object",
+      "required": [
+        "observed_at_ms",
+        "horizon_ms",
+        "alignment",
+        "latency_ms",
+        "tokens_per_second",
+        "completed_units",
+        "estimated_tokens_this_interval"
+      ],
+      "properties": {
+        "observed_at_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "horizon_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "alignment": {
+          "const": "next_interval"
+        },
+        "latency_ms": {
+          "type": "number",
+          "minimum": 0
+        },
+        "tokens_per_second": {
+          "type": "number",
+          "minimum": 0
+        },
+        "completed_units": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "success": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "estimated_tokens_this_interval": {
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": true
+    },
+    "metrics": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": false
+}
