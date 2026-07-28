@@ -3,6 +3,11 @@
     "version":  "0.3.1",
     "files":  [
                   {
+                      "path":  ".gitattributes",
+                      "bytes":  139,
+                      "sha256":  "068d5577f61071340e68c85eef9a594c28477fb24896ada7380cf749a11fd875"
+                  },
+                  {
                       "path":  ".github/workflows/ci.yml",
                       "bytes":  515,
                       "sha256":  "73a773a5c4135dbacddf87afc7f23ab503bfceb10839db62a769d490ccdddd60"

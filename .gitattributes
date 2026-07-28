@@ -1,0 +1,6 @@
+# Keep content-addressed manifest bytes stable across Windows and Unix clones.
+* text=auto eol=lf
+
+*.ico binary
+*.png binary
+*.webp binary
