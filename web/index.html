@@ -1,0 +1,1246 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PulseFlow Governor · Pulse Feedback Modulation Lab</title>
+  <meta name="theme-color" content="#008f4c">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" href="/assets/icons/pulseflow-governor-64.png" sizes="64x64">
+  <link rel="icon" type="image/png" href="/assets/icons/pulseflow-governor-512.png" sizes="512x512">
+  <link rel="apple-touch-icon" href="/assets/icons/pulseflow-governor-192.png">
+  <link rel="manifest" href="/site.webmanifest">
+  <meta name="pulseflow-interlink-protocol" content="pulseflow.interlink.v1">
+  <style>
+    :root {
+      --paper: #f4f3f0;
+      --panel: #faf9f6;
+      --ink: #161616;
+      --muted: #6b6964;
+      --line: #222;
+      --soft-line: #c9c6bf;
+      --accent: #008f4c;
+      --accent-soft: #d8f3e5;
+      --safe: #007a41;
+      --warn: #a2371f;
+      --shadow: rgba(0, 0, 0, 0.08);
+      font-family: "Arial Narrow", "Roboto Condensed", "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: #dad8d3;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-width: 320px; background: #d6d4cf; }
+    button, input, select { font: inherit; }
+    button { cursor: pointer; }
+    .shell {
+      width: 100%;
+      min-height: 100vh;
+      background: var(--paper);
+      border: 1px solid #111;
+      padding: 7px;
+      display: grid;
+      gap: 7px;
+    }
+    .topbar {
+      min-height: 58px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      display: grid;
+      grid-template-columns: minmax(250px, 1fr) minmax(330px, 1.4fr) minmax(260px, 1fr);
+      align-items: center;
+      padding: 6px 14px;
+      gap: 12px;
+    }
+    .micro-grid { display: grid; grid-template-columns: repeat(2, minmax(90px, 1fr)); gap: 3px 18px; }
+    .micro { font-size: 10px; letter-spacing: .14em; text-transform: uppercase; white-space: nowrap; }
+    .title { text-align: center; letter-spacing: .28em; font-size: clamp(21px, 2vw, 31px); font-weight: 700; line-height: 1; }
+    .subtitle { text-align: center; letter-spacing: .34em; font-size: 10px; margin-top: 5px; text-transform: uppercase; }
+    .top-right { display: flex; justify-content: flex-end; align-items: center; gap: 20px; }
+    .signal-bars { display: flex; align-items: end; gap: 2px; height: 20px; }
+    .signal-bars i { display: block; width: 4px; background: var(--ink); }
+    .signal-bars i:nth-child(1) { height: 5px; }.signal-bars i:nth-child(2) { height: 9px; }.signal-bars i:nth-child(3) { height: 14px; }.signal-bars i:nth-child(4) { height: 19px; }
+    .record-lamp { width: 34px; height: 34px; border: 1px solid var(--line); display: grid; place-items: center; }
+    .record-lamp span { width: 10px; height: 10px; background: var(--accent); display: block; }
+    .nav { display: grid; grid-template-columns: repeat(8, minmax(90px, 1fr)); gap: 7px; }
+    .tab {
+      min-height: 34px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      color: var(--ink);
+      letter-spacing: .16em;
+      font-size: 10px;
+      text-transform: uppercase;
+      position: relative;
+    }
+    .tab.active { background: #272727; color: #fff; }
+    .tab.active::after { content: ""; position: absolute; right: 0; top: 0; border-top: 13px solid var(--accent); border-left: 13px solid transparent; }
+    .workspace { display: grid; grid-template-columns: 265px minmax(430px, 1fr) 310px; gap: 7px; min-height: 590px; }
+    .panel { border: 1px solid var(--line); background: var(--panel); }
+    .panel-title { font-size: 10px; letter-spacing: .12em; text-transform: uppercase; font-weight: 700; padding: 7px 9px; border-bottom: 1px solid var(--soft-line); display: flex; justify-content: space-between; align-items: center; }
+    .left-stack { display: grid; grid-template-rows: repeat(7, minmax(58px, 1fr)) auto; }
+    .metric-strip { border-bottom: 1px solid var(--soft-line); padding: 7px 9px 4px; min-height: 64px; }
+    .metric-head { display: flex; justify-content: space-between; align-items: baseline; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; font-weight: 700; }
+    .metric-head span:last-child { color: var(--muted); font-weight: 500; }
+    canvas.spark { display: block; width: 100%; height: 38px; margin-top: 3px; }
+    .gauge-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 9px; }
+    .gauge { text-align: center; }
+    .ring { width: 72px; height: 72px; margin: auto; border-radius: 50%; background: conic-gradient(var(--accent) calc(var(--value) * 1%), #ddd 0); display: grid; place-items: center; position: relative; }
+    .ring::before { content: ""; width: 54px; height: 54px; border-radius: 50%; background: var(--panel); position: absolute; }
+    .ring strong { z-index: 1; font-size: 22px; }
+    .gauge label { display: block; font-size: 9px; letter-spacing: .1em; text-transform: uppercase; margin-top: 5px; }
+    .meter-list { padding: 0 9px 10px; display: grid; gap: 6px; }
+    .meter-line { display: grid; grid-template-columns: 92px 1fr 34px; gap: 7px; align-items: center; font-size: 9px; letter-spacing: .06em; text-transform: uppercase; }
+    .track { height: 5px; background: #ddd; overflow: hidden; }
+    .track i { display: block; height: 100%; background: var(--accent); width: 0; }
+    .center-panel { position: relative; overflow: hidden; min-height: 590px; }
+    .view { display: none; height: 100%; min-height: 590px; }
+    .view.active { display: block; }
+    .modulation-view { position: relative; height: 100%; background-image: linear-gradient(rgba(0,0,0,.025) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,.025) 1px, transparent 1px); background-size: 28px 28px; }
+    .modulation-view::before { content: ""; position: absolute; inset: 5% 8%; border: 1px dashed #c9c5bd; border-radius: 50%; }
+    .status-block { position: absolute; z-index: 5; top: 13px; left: 16px; font-size: 10px; line-height: 1.55; letter-spacing: .07em; text-transform: uppercase; }
+    .clock-block { position: absolute; z-index: 5; top: 13px; right: 16px; text-align: right; font-size: 10px; line-height: 1.55; letter-spacing: .07em; text-transform: uppercase; }
+    .accent { color: var(--accent); font-weight: 700; }
+    .core-wrap { position: absolute; inset: 75px 20px 35px; }
+    .orbit { position: absolute; left: 50%; top: 51%; transform: translate(-50%, -50%); border: 1px solid #bdb9b1; border-radius: 50%; }
+    .orbit.o1 { width: 500px; height: 390px; }.orbit.o2 { width: 390px; height: 300px; border-style: dashed; }.orbit.o3 { width: 260px; height: 200px; }
+    .core { position: absolute; left: 50%; top: 51%; transform: translate(-50%, -50%); width: 145px; height: 145px; border-radius: 50%; border: 1px solid #222; background: radial-gradient(circle at center, #00b864 0 8%, #141414 9% 14%, #f5f3ee 15% 29%, #aee8ca 30% 34%, #2b2b2b 35% 39%, #f7f5f1 40% 55%, #cfcac1 56% 59%, transparent 60%); box-shadow: 0 0 0 12px rgba(0,143,76,.10), 0 8px 15px var(--shadow); }
+    .core::after { content: "PULSE FEEDBACK\A MODULATION CORE"; white-space: pre; position: absolute; width: 210px; left: 50%; top: 155px; transform: translateX(-50%); text-align: center; font-size: 11px; letter-spacing: .1em; font-weight: 700; }
+    .resource-node { position: absolute; width: 108px; height: 83px; border: 1px solid var(--line); background: rgba(250,249,246,.95); box-shadow: 0 6px 12px var(--shadow); padding: 8px; z-index: 3; }
+    .resource-node::before { content: ""; position: absolute; width: 30px; height: 30px; right: 8px; top: 8px; background: repeating-linear-gradient(90deg,#222 0 3px,#eee 3px 6px); border: 3px solid var(--accent); }
+    .resource-node strong { font-size: 15px; letter-spacing: .08em; }.resource-node small { display: block; font-size: 9px; margin-top: 5px; line-height: 1.5; text-transform: uppercase; }
+    .node-cpu { left: 50%; top: 1%; transform: translateX(-50%); }.node-ram { left: 9%; top: 47%; }.node-gpu { right: 9%; top: 47%; }.node-io { left: 50%; bottom: 0; transform: translateX(-50%); }
+    .flow-line { position: absolute; height: 2px; background: var(--accent); transform-origin: left center; opacity: .8; box-shadow: 0 0 0 4px rgba(0,143,76,.10); z-index: 2; }
+    .flow-cpu { left: 50%; top: 19%; width: 150px; transform: rotate(90deg); }.flow-ram { left: 22%; top: 53%; width: 230px; transform: rotate(5deg); }.flow-gpu { left: 62%; top: 53%; width: 225px; transform: rotate(-5deg); }.flow-io { left: 50%; top: 65%; width: 145px; transform: rotate(90deg); }
+    .pulse-dot { position: absolute; width: 8px; height: 8px; border: 2px solid var(--accent); border-radius: 50%; background: var(--panel); animation: pulse 1.4s infinite ease-in-out; z-index: 4; }
+    .pulse-dot.p1 { left: 50%; top: 35%; }.pulse-dot.p2 { left: 35%; top: 53%; animation-delay:.3s; }.pulse-dot.p3 { right: 35%; top: 53%; animation-delay:.6s; }.pulse-dot.p4 { left: 50%; bottom: 23%; animation-delay:.9s; }
+    @keyframes pulse { 0%,100% { transform: scale(.7); opacity:.5; } 50% { transform: scale(1.5); opacity:1; } }
+    .core-caption { position: absolute; left: 16px; bottom: 14px; border: 1px solid var(--soft-line); background: rgba(250,249,246,.92); padding: 8px 11px; font-size: 9px; line-height: 1.7; text-transform: uppercase; letter-spacing: .07em; }
+    .stability-card { position: absolute; right: 16px; bottom: 14px; border: 1px solid var(--soft-line); background: rgba(250,249,246,.92); padding: 9px; width: 165px; font-size: 9px; text-transform: uppercase; letter-spacing: .08em; }
+    .content-view { padding: 15px; overflow: auto; }
+    .section-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; }
+    .data-card { border: 1px solid var(--soft-line); padding: 12px; background: #fff; }
+    .data-card h3 { margin: 0 0 9px; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }
+    .big-value { font-size: 29px; font-weight: 700; letter-spacing: .04em; }
+    .mini-copy { font-size: 11px; line-height: 1.55; color: #46443f; }
+    .table-wrap { overflow: auto; border: 1px solid var(--soft-line); background: #fff; }
+    table { width: 100%; border-collapse: collapse; font-size: 10px; }
+    th, td { padding: 7px; border-bottom: 1px solid #ddd; text-align: left; white-space: nowrap; }
+    th { text-transform: uppercase; letter-spacing: .08em; background: #efede8; }
+    .right-controls { display: grid; grid-template-rows: auto auto auto 1fr; min-height: 590px; }
+    .control-section { border-bottom: 1px solid var(--soft-line); padding: 9px 10px; }
+    .section-label { font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; margin-bottom: 8px; }
+    .button-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 7px; }
+    .btn { min-height: 30px; border: 1px solid var(--line); background: #fff; font-size: 9px; letter-spacing: .1em; text-transform: uppercase; }
+    .btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }.btn.dark { background: #242424; color: #fff; }.btn:disabled { opacity:.45; cursor:not-allowed; }
+    .mode-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 7px; }.mode-grid .active { background:#242424;color:#fff; }
+    .schedule { display: grid; gap: 8px; }
+    .schedule-row { display: grid; grid-template-columns: 32px 1fr; gap: 7px; align-items:center; font-size: 9px; }
+    .blocks { height: 11px; display: grid; grid-template-columns: repeat(12,1fr); gap: 2px; }.blocks i { background:#d4d1ca; }.blocks i.on { background:#222; }.blocks i.hot { background:var(--accent); }
+    .slider-list { display: grid; gap: 9px; }
+    .slider-row { display: grid; grid-template-columns: 112px 1fr 42px; gap: 7px; align-items:center; font-size: 9px; text-transform:uppercase; letter-spacing:.04em; }
+    input[type="range"] { width:100%; accent-color:var(--accent); }
+    .bottom-grid { display: grid; grid-template-columns: 1.1fr 1fr 1fr .95fr 1fr; gap: 0; border: 1px solid var(--line); background: var(--panel); min-height: 150px; }
+    .bottom-cell { padding: 10px 12px; border-right: 1px solid var(--soft-line); min-width: 0; }.bottom-cell:last-child { border-right:0; }
+    .bottom-cell h3 { margin:0 0 8px; font-size:10px; text-transform:uppercase; letter-spacing:.1em; }
+    .wave { width:100%; height:42px; display:block; }
+    .stats-three { display:grid;grid-template-columns:repeat(3,1fr);gap:8px;font-size:9px;text-transform:uppercase;line-height:1.5; }
+    .ledger { height:87px; overflow:hidden; font-family:Consolas,monospace; font-size:8px; line-height:1.45; color:#555; white-space:pre-wrap; }
+    .replay-controls { display:flex;gap:5px;align-items:center;flex-wrap:wrap; }.replay-controls .btn { min-width:31px; }
+    .metric-list { display:grid; gap:7px; font-size:9px; text-transform:uppercase; }.metric-list div { display:grid; grid-template-columns:1fr 65px; gap:6px; border-bottom:1px dotted #ccc; padding-bottom:3px; }
+    #heatmap { width:100%; height:88px; display:block; border-bottom:3px solid var(--accent); }
+    .footer { border:1px solid var(--line); background:var(--panel); padding:8px 14px; display:grid; grid-template-columns:repeat(7,minmax(90px,1fr)); gap:12px; font-size:9px; text-transform:uppercase; letter-spacing:.06em; }
+    .footer span { display:block;color:var(--muted);margin-bottom:3px; }.status-dot { display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--safe);margin-right:5px; }
+    .toast { position:fixed;right:16px;bottom:16px;background:#222;color:#fff;padding:10px 13px;font-size:11px;letter-spacing:.04em;opacity:0;transform:translateY(10px);transition:.2s;z-index:30;max-width:360px; }.toast.show { opacity:1;transform:translateY(0); }.toast.error { background:#9c2d16; }
+    .stage-grid { display:grid;grid-template-columns:repeat(3,1fr);gap:8px; }.stage-grid .active { background:var(--accent);color:#fff;border-color:var(--accent); }
+    .directive-box { border-left:5px solid var(--accent); padding:13px; background:#edf9f3; }
+    .json-box { font:10px/1.55 Consolas,monospace;background:#1f1f1f;color:#eee;padding:12px;white-space:pre-wrap;overflow:auto;max-height:300px; }
+    @media (max-width: 1180px) {
+      .workspace { grid-template-columns:230px minmax(390px,1fr) 280px; }
+      .bottom-grid { grid-template-columns:repeat(2,1fr); }.bottom-cell { border-bottom:1px solid var(--soft-line); }
+    }
+    @media (max-width: 900px) {
+      .topbar { grid-template-columns:1fr; }.top-right { justify-content:center; }.nav { grid-template-columns:repeat(4,1fr); }
+      .workspace { grid-template-columns:1fr; }.left-stack { grid-template-columns:repeat(2,1fr);grid-template-rows:auto; }.right-controls { min-height:auto; }
+      .center-panel,.view { min-height:620px; }.bottom-grid { grid-template-columns:1fr; }.bottom-cell { border-right:0; }.footer { grid-template-columns:repeat(2,1fr); }
+    }
+    @media (max-width: 560px) {
+      .nav { grid-template-columns:repeat(2,1fr); }.left-stack { grid-template-columns:1fr; }.section-grid { grid-template-columns:1fr; }.core-wrap { transform:scale(.72);transform-origin:center;left:-18%;right:-18%; }.footer { grid-template-columns:1fr; }
+    }
+
+    /* PULSEFLOW v0.2.5 GREEN READABILITY PROFILE */
+    :root {
+      --accent: #008f4c;
+      --accent-soft: #d8f3e5;
+      --safe: #007a41;
+      --accent-rgb: 0, 143, 76;
+    }
+    body { font-size: 14px; }
+    .shell { padding: 9px; gap: 9px; }
+    .topbar { min-height: 72px; padding: 9px 16px; }
+    .micro { font-size: 12px; }
+    .title { font-size: clamp(26px, 2.2vw, 36px); }
+    .subtitle { font-size: 12px; }
+    .nav { gap: 9px; }
+    .tab { min-height: 44px; font-size: 12px; }
+    .workspace { grid-template-columns: 300px minmax(520px, 1fr) 360px; gap: 9px; min-height: 660px; }
+    .left-stack { grid-template-rows: repeat(7, minmax(70px, 1fr)) auto; }
+    .metric-strip { min-height: 75px; padding: 9px 11px 6px; }
+    .metric-head, .panel-title, .section-label, .bottom-cell h3 { font-size: 12px; }
+    canvas.spark { height: 45px; }
+    .gauge label, .meter-line, .schedule-row, .slider-row, .stats-three, .metric-list, .footer { font-size: 11px; }
+    .status-block, .clock-block { font-size: 12px; }
+    .resource-node strong { font-size: 17px; }
+    .resource-node small, .core-caption, .stability-card { font-size: 11px; }
+    .core::after { font-size: 13px; }
+    .data-card h3 { font-size: 13px; }
+    .mini-copy { font-size: 13px; }
+    table { font-size: 12px; }
+    th, td { padding: 9px; }
+    .btn { min-height: 38px; font-size: 11px; }
+    .slider-row { grid-template-columns: 132px 1fr 48px; }
+    .ledger { height: 104px; font-size: 10px; }
+    .json-box { font-size: 12px; }
+    .toast { font-size: 13px; }
+    .right-controls, .center-panel, .view { min-height: 660px; }
+    .record-lamp span { background: var(--accent); }
+    @media (max-width: 1300px) {
+      .workspace { grid-template-columns: 270px minmax(430px, 1fr) 325px; }
+      .slider-row { grid-template-columns: 118px 1fr 44px; }
+    }
+
+
+    /* PULSEFLOW v0.3.0 / ARIA 2035 SYSTEM INTERLINK PROFILE */
+    :root {
+      --pf-green: #00a85a;
+      --pf-green-bright: #19d879;
+      --pf-green-soft: rgba(0,168,90,.10);
+      --pf-green-glow: rgba(25,216,121,.26);
+      --pf-charcoal: #102019;
+      --pf-surface: rgba(255,255,255,.88);
+      --pf-border: rgba(24,53,40,.20);
+      --pf-shadow: 0 10px 28px rgba(18,48,34,.08);
+    }
+    body { background: #e8eeea; }
+    .shell { background: radial-gradient(circle at 50% 32%, rgba(0,168,90,.045), transparent 38%), #f4f8f5; border-color:#b8c5bd; }
+    .topbar, .panel, .bottom-grid, .footer { background: var(--pf-surface); border-color: var(--pf-border); box-shadow: var(--pf-shadow); }
+    .topbar { border-radius: 13px; backdrop-filter: blur(15px); }
+    .title { font-family: "Segoe UI",sans-serif; font-weight:650; letter-spacing:.30em; }
+    .subtitle { color:#587066; }
+    .nav { padding:2px 0; }
+    .tab { border-color:var(--pf-border); border-radius:8px; background:rgba(255,255,255,.74); transition:.16s ease; }
+    .tab:hover { border-color:var(--pf-green); transform:translateY(-1px); }
+    .tab.active { background:linear-gradient(180deg,#113d2a,#08271a); color:#fff; border-color:var(--pf-green-bright); box-shadow:0 0 0 1px rgba(25,216,121,.32),0 8px 18px rgba(0,108,57,.16); }
+    .tab.active::after { border-top-color:var(--pf-green-bright); }
+    .panel { border-radius:12px; overflow:hidden; }
+    .metric-strip { background:linear-gradient(90deg,rgba(0,168,90,.028),transparent); }
+    .metric-head span:last-child { color:#008c4b; font-size:14px; font-weight:700; }
+    .ring { box-shadow:inset 0 0 0 1px rgba(0,168,90,.12),0 0 18px rgba(0,168,90,.08); }
+    .center-panel { background:rgba(255,255,255,.78); }
+    .modulation-view { background-image:radial-gradient(circle at center,rgba(0,168,90,.065),transparent 38%),linear-gradient(rgba(0,70,35,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,70,35,.03) 1px,transparent 1px); background-size:auto,28px 28px,28px 28px; }
+    .modulation-view::before { border-color:rgba(0,168,90,.30); box-shadow:0 0 70px rgba(0,168,90,.06) inset; }
+    .hud-card { padding:9px 11px; border:1px solid var(--pf-border); border-radius:8px; background:rgba(255,255,255,.82); box-shadow:0 8px 18px rgba(12,43,27,.06); }
+    .core { width:170px;height:170px;border-color:#064c2b;background:radial-gradient(circle at center,#19d879 0 7%,#071a11 8% 16%,#f8fffb 17% 28%,#67e5a9 29% 34%,#0b4b2d 35% 42%,#f9fffb 43% 55%,#b8ddc9 56% 59%,transparent 60%); box-shadow:0 0 0 12px rgba(0,168,90,.08),0 0 0 24px rgba(0,168,90,.035),0 0 42px var(--pf-green-glow); }
+    .core::before { content:""; position:absolute; inset:-21px; border:1px dashed rgba(0,168,90,.42); border-radius:50%; animation:pfRotate 14s linear infinite; }
+    .core::after { top:181px; color:#173a29; }
+    @keyframes pfRotate { to { transform:rotate(360deg); } }
+    .orbit { border-color:rgba(21,92,57,.25); }
+    .orbit.o2 { border-color:rgba(0,168,90,.35); }
+    .flow-line { height:3px;background:linear-gradient(90deg,transparent,var(--pf-green-bright),transparent);box-shadow:0 0 12px var(--pf-green-glow); }
+    .resource-node { width:128px;height:96px;border-color:var(--pf-border);border-radius:10px;background:rgba(255,255,255,.90);box-shadow:0 12px 24px rgba(15,54,34,.10); }
+    .resource-node::before { border-color:var(--pf-green);border-radius:3px; }
+    .stability-card,.core-caption { border-color:var(--pf-border);border-radius:8px;box-shadow:0 8px 18px rgba(12,43,27,.06); }
+    .right-controls { background:rgba(255,255,255,.86); }
+    .control-section { border-color:rgba(24,53,40,.12); }
+    .btn { border-color:rgba(20,61,40,.32);border-radius:7px;background:rgba(255,255,255,.84);transition:.15s ease; }
+    .btn:hover { border-color:var(--pf-green);box-shadow:0 0 0 2px rgba(0,168,90,.08); }
+    .btn.primary { background:linear-gradient(180deg,#09b861,#008b49);color:white;border-color:#006e3a;box-shadow:0 8px 18px rgba(0,143,76,.20); }
+    .mode-grid .btn.active,.stage-grid .active { background:#10281d;color:#fff;border-color:var(--pf-green-bright); }
+    .header-status-card { display:grid;grid-template-columns:repeat(2,auto);gap:13px;padding:7px 10px;border:1px solid var(--pf-border);border-radius:9px;background:rgba(255,255,255,.78); }
+    .header-status-card div { display:grid;gap:2px; }
+    .header-status-card span,.system-link-chip small { font-size:9px;letter-spacing:.13em;text-transform:uppercase;color:#60736a; }
+    .header-status-card b { font-size:11px;letter-spacing:.08em; }
+    .system-link-chip { min-width:158px;display:flex;align-items:center;gap:9px;padding:7px 10px;border:1px solid var(--pf-border);border-radius:9px;background:rgba(255,255,255,.78);transition:.2s; }
+    .system-link-chip > span:last-child { display:grid;gap:2px; }
+    .system-link-chip b { font-size:11px;letter-spacing:.08em; }
+    .link-orbit { width:28px;height:28px;border:1px solid currentColor;border-radius:50%;display:grid;place-items:center;position:relative; }
+    .link-orbit::before,.link-orbit::after { content:"";position:absolute;border:1px solid currentColor;border-radius:50%;inset:5px;opacity:.55; }
+    .link-orbit::after { inset:10px;background:currentColor; }
+    .link-orbit i { position:absolute;width:34px;height:1px;background:currentColor;animation:pfLinkSweep 2s linear infinite; }
+    @keyframes pfLinkSweep { to { transform:rotate(360deg); } }
+    .system-link-chip[data-state="active"],.interlink-panel[data-state="active"],.control-link-state[data-state="active"] { color:#007d43;border-color:#00aa5a;background:rgba(0,168,90,.09);box-shadow:0 0 20px rgba(0,168,90,.12); }
+    .system-link-chip[data-state="armed"],.interlink-panel[data-state="armed"],.control-link-state[data-state="armed"] { color:#176a8a;border-color:#4f9eb9;background:rgba(54,142,174,.08); }
+    .system-link-chip[data-state="observe"],.interlink-panel[data-state="observe"],.control-link-state[data-state="observe"] { color:#77600d;border-color:#c5a63a;background:rgba(206,174,51,.09); }
+    .system-link-chip[data-state="fracture"],.interlink-panel[data-state="fracture"],.control-link-state[data-state="fracture"] { color:#9b2d23;border-color:#bd4a3e;background:rgba(189,74,62,.08); }
+    .control-title-row { display:flex;justify-content:space-between;align-items:center;margin-bottom:8px; }
+    .control-link-state { display:flex;align-items:center;gap:6px;padding:4px 7px;border:1px solid var(--pf-border);border-radius:999px;font-size:9px;letter-spacing:.08em; }
+    .control-link-state span { width:7px;height:7px;border-radius:50%;background:currentColor;box-shadow:0 0 10px currentColor; }
+    .interlink-panel { margin-top:10px;padding:10px;border:1px solid var(--pf-border);border-radius:9px;background:rgba(0,168,90,.035); }
+    .interlink-heading { display:grid;grid-template-columns:34px 1fr auto;gap:8px;align-items:center; }
+    .interlink-heading small { display:block;font-size:9px;letter-spacing:.12em;text-transform:uppercase;opacity:.72; }
+    .interlink-heading strong { display:block;font-size:12px;letter-spacing:.06em;margin-top:2px; }
+    .interlink-mark { width:32px;height:32px;border:1px solid currentColor;border-radius:8px;display:grid;place-items:center; }
+    .interlink-mark i { width:13px;height:13px;border:2px solid currentColor;border-radius:50%;box-shadow:0 0 12px currentColor; }
+    .verify-link-btn { border:1px solid currentColor;background:transparent;color:inherit;border-radius:6px;padding:6px 8px;text-transform:uppercase;font-size:9px;letter-spacing:.08em;cursor:pointer; }
+    .interlink-grid { display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-top:9px; }
+    .interlink-grid div { padding:6px;border:1px solid rgba(22,66,42,.12);border-radius:5px;background:rgba(255,255,255,.58);display:flex;justify-content:space-between;gap:7px; }
+    .interlink-grid span,.receipt-line span { font-size:9px;letter-spacing:.08em;text-transform:uppercase;opacity:.7; }
+    .interlink-grid b,.receipt-line b { font-size:9px;letter-spacing:.04em;text-align:right; }
+    #interlink-detail { font-size:10px;line-height:1.45;margin:8px 0;color:#43564c; }
+    .receipt-line { display:flex;justify-content:space-between;gap:8px;padding-top:7px;border-top:1px dotted rgba(22,66,42,.25); }
+    .coherence-scope-card { position:absolute;z-index:6;left:50%;top:12px;transform:translateX(-50%);width:min(430px,38%);padding:8px 11px;border:1px solid var(--pf-border);border-radius:9px;background:rgba(255,255,255,.78);box-shadow:0 8px 22px rgba(12,43,27,.07);backdrop-filter:blur(10px); }
+    .scope-head { display:flex;justify-content:space-between;font-size:10px;letter-spacing:.09em;text-transform:uppercase; }
+    #coherence-scope { width:100%;height:38px;display:block;margin:3px 0; }
+    .scope-legend { display:flex;gap:13px;align-items:center;font-size:8px;letter-spacing:.07em;text-transform:uppercase;color:#556a60; }
+    .scope-legend span:last-child { margin-left:auto;color:var(--accent);font-weight:700; }
+    .scope-legend i { display:inline-block;width:12px;height:2px;margin-right:4px;vertical-align:middle; }
+    .scope-legend i.raw { background:#9fb2a8; }
+    .scope-legend i.filtered { background:var(--pf-green);box-shadow:0 0 6px var(--pf-green-glow); }
+    .bottom-cell { background:rgba(255,255,255,.72); }
+    .ledger { background:#0c1c14;color:#91eab9;border-radius:6px;padding:8px; }
+    #heatmap { border-radius:5px; }
+    @media (max-width:1300px) { .coherence-scope-card { width:34%; } .system-link-chip { min-width:135px; } }
+    @media (max-width:1050px) { .coherence-scope-card { display:none; } .header-status-card { display:none; } }
+
+    /* PulseFlow 0.3.1 · 2035 interlink and modulation field */
+    .modulation-view {
+      background:
+        radial-gradient(circle at 50% 50%, rgba(0,168,90,.10), transparent 26%),
+        linear-gradient(rgba(0,80,42,.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,80,42,.035) 1px, transparent 1px),
+        linear-gradient(135deg, #fbfffd, #f1f7f3 52%, #fbfffd);
+      background-size: auto, 24px 24px, 24px 24px, auto;
+    }
+    .modulation-view::before { inset: 8% 7%; border-color: rgba(0,143,76,.26); box-shadow: inset 0 0 80px rgba(0,143,76,.04); }
+    .core-wrap {
+      inset: 82px 28px 38px;
+      --modulation: 0;
+      --field-alpha: .16;
+      isolation: isolate;
+    }
+    .core-wrap::before, .core-wrap::after {
+      content:""; position:absolute; left:50%; top:51%; transform:translate(-50%,-50%); border-radius:50%; pointer-events:none;
+    }
+    .core-wrap::before { width:640px; height:430px; border:1px solid rgba(0,143,76,.18); box-shadow:0 0 90px rgba(0,143,76,var(--field-alpha)); }
+    .core-wrap::after { width:365px; height:365px; background:radial-gradient(circle, rgba(0,168,90,.10), transparent 67%); filter:blur(1px); }
+    .field-cross { position:absolute; left:50%; top:51%; width:74%; height:74%; transform:translate(-50%,-50%); z-index:0; }
+    .field-cross::before, .field-cross::after { content:""; position:absolute; background:linear-gradient(90deg,transparent,rgba(0,168,90,.28),transparent); }
+    .field-cross::before { left:0; right:0; top:50%; height:1px; }
+    .field-cross::after { top:0; bottom:0; left:50%; width:1px; background:linear-gradient(transparent,rgba(0,168,90,.28),transparent); }
+    .orbit { border-color:rgba(0,82,44,.25); box-shadow:inset 0 0 20px rgba(0,143,76,.025); z-index:1; }
+    .orbit.o1 { width:650px; height:430px; border-style:dashed; }
+    .orbit.o2 { width:455px; height:330px; border-style:solid; }
+    .orbit.o3 { width:300px; height:240px; border-style:dotted; }
+    .orbit-ticks { position:absolute; left:50%; top:51%; width:392px; height:392px; transform:translate(-50%,-50%); border-radius:50%; z-index:1; background:repeating-conic-gradient(from 0deg, rgba(0,143,76,.38) 0 1deg, transparent 1deg 12deg); mask:radial-gradient(circle,transparent 0 47%,#000 48% 50%,transparent 51%); opacity:.42; }
+    .core-wrap[data-state="active"] { --field-alpha: .38; }
+    .core-wrap[data-state="armed"] { --field-alpha: .24; }
+    .core-wrap[data-state="active"] .orbit-ticks { animation:field-spin 18s linear infinite; opacity:.82; }
+    .core-wrap[data-state="active"] .orbit.o2 { animation:field-spin-reverse 28s linear infinite; }
+    @keyframes field-spin { to { transform:translate(-50%,-50%) rotate(360deg); } }
+    @keyframes field-spin-reverse { to { transform:translate(-50%,-50%) rotate(-360deg); } }
+    .flow-line { height:3px; background:linear-gradient(90deg,transparent 0,rgba(0,168,90,.35) 12%,#00a85a 50%,rgba(0,168,90,.35) 88%,transparent 100%); box-shadow:0 0 12px rgba(0,168,90,.24); overflow:visible; }
+    .flow-line::after { content:""; position:absolute; top:50%; width:9px; height:9px; border-radius:50%; background:#f8fffb; border:2px solid #00a85a; transform:translate(-50%,-50%); left:50%; box-shadow:0 0 12px rgba(0,168,90,.65); }
+    .core-wrap[data-state="active"] .flow-line::after { animation:lane-pulse 1.8s ease-in-out infinite; }
+    @keyframes lane-pulse { 0%,100%{left:18%;opacity:.45} 50%{left:82%;opacity:1} }
+    .flow-cpu { left:50%; top:17%; width:175px; }
+    .flow-ram { left:18%; top:51%; width:285px; transform:rotate(0); }
+    .flow-gpu { left:60%; top:51%; width:285px; transform:rotate(0); }
+    .flow-io { left:50%; top:64%; width:170px; }
+    .pulse-dot { width:10px; height:10px; box-shadow:0 0 18px rgba(0,168,90,.48); }
+    .resource-node { width:142px; min-height:94px; height:auto; border:1px solid rgba(0,62,34,.32); border-radius:9px; background:rgba(255,255,255,.91); backdrop-filter:blur(10px); box-shadow:0 12px 30px rgba(0,50,26,.10); padding:12px 12px 10px 50px; }
+    .resource-node::before { width:27px; height:27px; left:12px; right:auto; top:13px; border:2px solid var(--accent); border-radius:6px; background:repeating-linear-gradient(90deg,#0a2a1c 0 2px,#e9fff3 2px 4px); box-shadow:0 0 0 7px rgba(0,168,90,.08); }
+    .resource-node::after { content:""; position:absolute; left:13px; bottom:13px; width:24px; height:4px; background:linear-gradient(90deg,var(--accent) 62%,#d6e8de 62%); }
+    .resource-node strong { font-size:16px; }
+    .resource-node small { font-size:9px; color:#37483f; }
+    .node-cpu { top:0; }
+    .node-ram { left:3%; top:42%; }
+    .node-gpu { right:3%; top:42%; }
+    .node-io { bottom:0; }
+    .core-reactor { position:absolute; left:50%; top:51%; transform:translate(-50%,-50%); width:206px; height:206px; border-radius:50%; z-index:4; display:grid; place-items:center; background:radial-gradient(circle,#041f14 0 24%,#0d3525 25% 31%,#e8fff3 32% 35%,#006f3b 36% 39%,#f7fffb 40% 51%,rgba(0,168,90,.18) 52% 58%,transparent 59%); box-shadow:0 0 0 1px rgba(0,58,31,.5),0 0 0 14px rgba(0,168,90,.07),0 0 42px rgba(0,168,90,.28); }
+    .core-reactor::before { content:""; position:absolute; inset:-28px; border:1px dashed rgba(0,143,76,.55); border-radius:50%; }
+    .core-reactor::after { content:""; position:absolute; inset:18px; border:1px solid rgba(236,255,246,.55); border-radius:50%; box-shadow:inset 0 0 25px rgba(0,255,139,.22); }
+    .core-readout { z-index:2; width:116px; text-align:center; color:#f5fff9; text-transform:uppercase; letter-spacing:.10em; }
+    .core-readout small { display:block; font-size:8px; opacity:.75; }
+    .core-readout strong { display:block; font-size:18px; line-height:1.05; margin:2px 0 4px; color:#83ffc0; }
+    .core-readout span { display:block; font-size:8px; }
+    .core-proof { position:absolute; left:50%; top:calc(51% + 128px); transform:translateX(-50%); z-index:5; display:flex; gap:6px; flex-wrap:wrap; justify-content:center; width:380px; }
+    .core-proof span { padding:4px 7px; border:1px solid rgba(0,83,44,.25); border-radius:999px; background:rgba(255,255,255,.82); font-size:8px; letter-spacing:.08em; text-transform:uppercase; }
+    .core-proof b { color:var(--accent); }
+    .interlink-pairing { border-top:1px solid rgba(0,100,53,.2); margin-top:8px; padding-top:8px; }
+    .pairing-label { display:flex; justify-content:space-between; margin-bottom:5px; font-size:8px; letter-spacing:.10em; text-transform:uppercase; color:#4d6257; }
+    .process-row { display:grid; grid-template-columns:minmax(0,1fr) 72px; gap:5px; }
+    .process-row select { min-width:0; width:100%; border:1px solid #a8bdb1; background:#fff; border-radius:5px; padding:6px; font-size:9px; }
+    .pairing-actions { display:grid; grid-template-columns:1fr 1fr; gap:5px; margin-top:6px; }
+    .pairing-actions .btn { min-height:30px; font-size:8px; letter-spacing:.07em; }
+    .pairing-actions .enable { grid-column:1 / -1; background:linear-gradient(135deg,#007f43,#00a85a); color:#fff; border-color:#006d39; box-shadow:0 0 0 2px rgba(0,168,90,.10); }
+    .pairing-detail { margin-top:5px; font-size:8px; color:#506158; min-height:24px; }
+    .channel-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:4px; margin-top:6px; }
+    .channel-grid div { border:1px solid rgba(0,83,44,.17); padding:5px; background:rgba(255,255,255,.62); }
+    .channel-grid span { display:block; font-size:7px; letter-spacing:.07em; text-transform:uppercase; color:#6a7b72; }
+    .channel-grid b { display:block; font-size:8px; margin-top:2px; }
+    @media (max-width: 1200px) {
+      .core-wrap::before, .orbit.o1 { width:520px; }
+      .resource-node { width:126px; padding-left:45px; }
+      .node-ram { left:1%; }.node-gpu { right:1%; }
+    }
+  </style>
+</head>
+<body>
+<div class="shell">
+  <header class="topbar">
+    <div class="micro-grid">
+      <div class="micro">SYS ID: <b id="sys-id">PF-GOV-0.3.1</b></div><div class="micro">TEMP: <b id="header-temp">--°C</b></div>
+      <div class="micro">BUILD: <b>OBS-LAB-2035</b></div><div class="micro">MODE: <b id="header-mode">BALANCED</b></div>
+      <div class="micro">SESSION: <b id="header-session">--</b></div><div class="micro">AGENT: <b id="header-agent">UNBOUND</b></div>
+    </div>
+    <div><div class="title">PULSEFLOW GOVERNOR</div><div class="subtitle">Pulse Feedback Modulation Lab</div></div>
+    <div class="top-right">
+      <div class="header-status-card">
+        <div><span>QoS</span><b class="accent" id="header-qos">MONITOR</b></div>
+        <div><span>Runtime</span><b id="connection-label">CONNECTING</b></div>
+      </div>
+      <div class="system-link-chip" id="header-system-link" data-state="checking" title="Derived from backend runtime, telemetry freshness, target process state, governor support, and applied QoS.">
+        <span class="link-orbit" aria-hidden="true"><i></i></span>
+        <span><small>System link</small><b id="header-link-state">VERIFYING</b></span>
+      </div>
+      <div class="signal-bars" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+      <div class="record-lamp" title="Recording status"><span id="record-lamp"></span></div>
+    </div>
+  </header>
+
+  <nav class="nav" aria-label="PulseFlow sections">
+    <button class="tab" data-tab="telemetry">Telemetry</button>
+    <button class="tab active" data-tab="modulation">Modulation</button>
+    <button class="tab" data-tab="dataset">Dataset</button>
+    <button class="tab" data-tab="agent">Agent</button>
+    <button class="tab" data-tab="analytics">Analytics</button>
+    <button class="tab" data-tab="replay">Replay</button>
+    <button class="tab" data-tab="logs">Logs</button>
+    <button class="tab" data-tab="config">Config</button>
+  </nav>
+
+  <main class="workspace">
+    <aside class="panel left-stack" aria-label="Live telemetry instruments">
+      <div class="metric-strip"><div class="metric-head"><span>CPU Load</span><span id="cpu-value">--%</span></div><canvas class="spark" id="chart-cpu"></canvas></div>
+      <div class="metric-strip"><div class="metric-head"><span>GPU Load</span><span id="gpu-value">--%</span></div><canvas class="spark" id="chart-gpu"></canvas></div>
+      <div class="metric-strip"><div class="metric-head"><span>RAM Pressure</span><span id="ram-value">--%</span></div><canvas class="spark" id="chart-ram"></canvas></div>
+      <div class="metric-strip"><div class="metric-head"><span>Thermal Stress</span><span id="thermal-value">--°C</span></div><canvas class="spark" id="chart-thermal"></canvas></div>
+      <div class="metric-strip"><div class="metric-head"><span>Latency P95</span><span id="latency-value">-- ms</span></div><canvas class="spark" id="chart-latency"></canvas></div>
+      <div class="metric-strip"><div class="metric-head"><span>Residue Memory</span><span id="residue-value">--</span></div><canvas class="spark" id="chart-residue"></canvas></div>
+      <div class="metric-strip"><div class="metric-head"><span>Queue Activity</span><span id="queue-value">--</span></div><canvas class="spark" id="chart-queue"></canvas></div>
+      <div>
+        <div class="gauge-row">
+          <div class="gauge"><div class="ring" id="gauge-efficiency" style="--value:0"><strong id="efficiency-value">0</strong></div><label>Pulse Efficiency</label></div>
+          <div class="gauge"><div class="ring" id="gauge-stability" style="--value:0"><strong id="stability-value">0</strong></div><label>Stability Index</label></div>
+        </div>
+        <div class="meter-list">
+          <div class="meter-line"><span>System stress</span><div class="track"><i id="stress-meter"></i></div><b id="stress-meter-value">0%</b></div>
+          <div class="meter-line"><span>Thermal headroom</span><div class="track"><i id="headroom-meter"></i></div><b id="headroom-value">--</b></div>
+          <div class="meter-line"><span>Policy confidence</span><div class="track"><i id="confidence-meter"></i></div><b id="confidence-value">0%</b></div>
+        </div>
+      </div>
+    </aside>
+
+    <section class="panel center-panel">
+      <div class="view content-view" data-view="telemetry">
+        <div class="data-card" style="margin-bottom:10px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+          <div><h3 style="margin-bottom:3px">Graph Source</h3><b id="history-source">LIVE · CURRENT SESSION</b></div>
+          <label class="micro" style="margin-left:auto">Visible window
+            <select id="chart-window" style="margin-left:7px;padding:6px;border:1px solid #222">
+              <option value="120">2 minutes</option>
+              <option value="600" selected>10 minutes</option>
+              <option value="1800">30 minutes</option>
+              <option value="3600">1 hour</option>
+              <option value="all">All loaded</option>
+            </select>
+          </label>
+        </div>
+        <div class="section-grid">
+          <div class="data-card"><h3>Machine State</h3><div class="big-value" id="telemetry-stress">0.00</div><div class="mini-copy">Filtered composite stress. The compositor renormalizes available CPU, RAM, GPU, thermal, queue, and latency channels.</div></div>
+          <div class="data-card"><h3>Process State</h3><div class="big-value" id="process-cpu">--%</div><div class="mini-copy" id="process-copy">No governed process is attached.</div></div>
+          <div class="data-card"><h3>Prediction Residue</h3><div class="big-value" id="telemetry-residue">0.000</div><div class="mini-copy">The difference between observed and predicted stress. Residue is retained as bounded modulation memory.</div></div>
+          <div class="data-card"><h3>I/O Signal</h3><div class="big-value" id="io-throughput">0.0 t/s</div><div class="mini-copy" id="io-copy">Waiting for an agent or workload signal.</div></div>
+        </div>
+        <div class="data-card" style="margin-top:10px"><h3>Recent Observation Frames</h3><div class="table-wrap"><table><thead><tr><th>Sequence</th><th>CPU</th><th>GPU</th><th>RAM</th><th>Temp</th><th>Stress</th><th>Residue</th><th>QoS</th></tr></thead><tbody id="telemetry-table"></tbody></table></div></div>
+      </div>
+
+      <div class="view active modulation-view" data-view="modulation">
+        <div class="status-block hud-card">Pulse network status<br>Stability: <span class="accent" id="core-stability">ACQUIRING</span><br>Turbulence: <span class="accent" id="core-turbulence">INSUFFICIENT DATA</span><br>Flow state: <span class="accent" id="core-phase">HOLD</span><br>Error rate: <span id="core-error">0.000</span></div>
+        <div class="clock-block hud-card">Sample clock: <span id="sample-clock">1.00 Hz</span><br>Cycle: <span id="cycle-value">0</span><br>Δt: <span id="dt-value">1000 ms</span></div>
+        <div class="coherence-scope-card">
+          <div class="scope-head" title="Oscillation coherence measures how consistently the observed workload follows the governor’s filtered control trajectory. Stability can remain high while coherence is moderate when disturbances are bounded but irregular."><span>Oscillation coherence ⓘ</span><b id="coherence-damping">--%</b></div>
+          <canvas id="coherence-scope" aria-label="Raw and filtered stress comparison"></canvas>
+          <div class="scope-legend"><span><i class="raw"></i>Raw drift</span><span><i class="filtered"></i>Filtered flow</span><span id="coherence-mode">OBSERVE</span></div>
+        </div>
+        <div class="core-wrap" id="core-stage" data-state="observe">
+          <div class="field-cross"></div>
+          <div class="orbit o1"></div><div class="orbit o2"></div><div class="orbit o3"></div><div class="orbit-ticks"></div>
+          <div class="flow-line flow-cpu"></div><div class="flow-line flow-ram"></div><div class="flow-line flow-gpu"></div><div class="flow-line flow-io"></div>
+          <span class="pulse-dot p1"></span><span class="pulse-dot p2"></span><span class="pulse-dot p3"></span><span class="pulse-dot p4"></span>
+          <div class="resource-node node-cpu"><strong>CPU</strong><small>Host load <b class="accent" id="node-cpu">--%</b><br>Target process <b id="node-process">--%</b></small></div>
+          <div class="resource-node node-ram"><strong>RAM</strong><small>Pressure <b class="accent" id="node-ram">--%</b><br>Used <b id="node-ram-used">-- GB</b></small></div>
+          <div class="resource-node node-gpu"><strong>GPU</strong><small>Host load <b class="accent" id="node-gpu">--%</b><br>Temperature <b id="node-gpu-temp">--°C</b></small></div>
+          <div class="resource-node node-io"><strong>I/O</strong><small>Agent queue <b class="accent" id="node-io">0</b><br>Latency <b id="node-latency">0 ms</b></small></div>
+          <div class="core-reactor">
+            <div class="core-readout"><small>Control authority</small><strong id="core-authority">0%</strong><small>Applied modulation</small><strong id="core-modulation">0%</strong><span id="core-qos">MONITOR ONLY</span></div>
+          </div>
+          <div class="core-proof"><span>Target <b id="core-target">UNBOUND</b></span><span>Process QoS <b id="core-process-channel">OFF</b></span><span>Agent adapter <b id="core-agent-channel">WAIT</b></span></div>
+        </div>
+        <div class="core-caption">— Data flow<br><span class="accent">— Pulse modulation</span><br>··· Residual feedback<br>– – Agent directive</div>
+        <div class="stability-card">System stability<br><b class="accent" id="stability-label">ACQUIRING</b><br><br>Confidence <b id="core-confidence">0.00</b></div>
+      </div>
+
+      <div class="view content-view" data-view="dataset">
+        <div class="section-grid">
+          <div class="data-card"><h3>Active Dataset</h3><div class="big-value" id="dataset-samples">0</div><div class="mini-copy"><b id="dataset-session">--</b><br><span id="dataset-size">0 B</span> persisted as JSONL observation frames.</div></div>
+          <div class="data-card"><h3>Persistence Contract</h3><div class="mini-copy"><b>Dₜ = (Xₜ, Aₜ, Rₜ, Yₜ₊Δ)</b><br>Every interval stores machine and workload state, selected action, unresolved residue, measured outcome, and rolling metrics.</div></div>
+        </div>
+        <div class="data-card" style="margin-top:10px"><h3>Saved Sessions</h3><div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap"><select id="session-select" style="min-width:280px;padding:7px;border:1px solid #222"></select><button class="btn" data-action="session-refresh">Refresh</button><button class="btn" data-action="session-load">Load Charts</button><button class="btn" data-action="session-live">Return Live</button><button class="btn" data-action="session-export">Export JSONL</button><button class="btn primary" data-action="session-new">New Session</button></div><div class="table-wrap"><table><thead><tr><th>Session</th><th>Samples</th><th>Bytes</th><th>Last sample</th><th>Target</th></tr></thead><tbody id="session-table"></tbody></table></div></div>
+        <div class="data-card" style="margin-top:10px"><h3>Latest Frame</h3><pre class="json-box" id="latest-frame-json">Waiting for first observation frame…</pre></div>
+      </div>
+
+      <div class="view content-view" data-view="agent">
+        <div class="directive-box"><div class="section-label">Current Resource-Homeostasis Directive</div><div class="big-value" id="directive-route">BALANCED</div><p class="mini-copy" id="directive-reason">Waiting for telemetry.</p></div>
+        <div class="section-grid" style="margin-top:10px">
+          <div class="data-card"><h3>Concurrency</h3><div class="big-value" id="directive-concurrency">1</div></div>
+          <div class="data-card"><h3>Batch Size</h3><div class="big-value" id="directive-batch">1</div></div>
+          <div class="data-card"><h3>Token Budget Scale</h3><div class="big-value" id="directive-token">0.00</div></div>
+          <div class="data-card"><h3>Retrieval Depth Scale</h3><div class="big-value" id="directive-retrieval">0.00</div></div>
+        </div>
+        <div class="data-card" style="margin-top:10px"><h3>Development Stage Gate</h3><div class="stage-grid">
+          <button class="btn" data-action="stage-recorder">1 Recorder</button><button class="btn" data-action="stage-analytics">2 Analytics</button><button class="btn" data-action="stage-replay">3 Replay</button>
+          <button class="btn" data-action="stage-shadow">4 Shadow</button><button class="btn" data-action="stage-bounded_adaptive">5 Bounded Adaptive</button><button class="btn" data-action="stage-agent_policy">6 Agent Policy</button>
+        </div><p class="mini-copy">Bounded gain writes remain disabled unless explicitly enabled in configuration. Agent-policy mode exposes recommendations; the external agent chooses whether to obey them.</p></div>
+        <div class="section-grid" style="margin-top:10px">
+          <div class="data-card"><h3>Adaptive Tuner</h3><div class="big-value" id="adaptive-state">INACTIVE</div><p class="mini-copy" id="adaptive-reason">Waiting for finalized evidence.</p></div>
+          <div class="data-card"><h3>Tuning Evidence</h3><div class="big-value" id="adaptive-samples">0</div><p class="mini-copy">Finalized samples · confidence <b id="adaptive-confidence">0.00</b> · applied <b id="adaptive-applied">NO</b></p></div>
+        </div>
+        <div class="section-grid" style="margin-top:10px">
+          <div class="data-card"><h3>Machine-Readable Directive</h3><pre class="json-box" id="directive-json">{}</pre></div>
+          <div class="data-card"><h3>Machine-Readable Tuning Suggestion</h3><pre class="json-box" id="adaptive-json">{}</pre></div>
+        </div>
+      </div>
+
+      <div class="view content-view" data-view="analytics">
+        <div class="section-grid">
+          <div class="data-card"><h3>Average Throughput</h3><div class="big-value" id="metric-throughput">0.0 t/s</div><div class="mini-copy">Rolling mean reported by the connected workload.</div></div>
+          <div class="data-card"><h3>Flow Stability</h3><div class="big-value" id="metric-flow">0.00</div><div class="mini-copy">1 − σ(L)/(μ(L)+ε), using latency when available and stress otherwise.</div></div>
+          <div class="data-card"><h3>Thermal Oscillation</h3><div class="big-value" id="metric-thermal">--°C</div><div class="mini-copy">Rolling standard deviation of observed GPU temperature.</div></div>
+          <div class="data-card"><h3>Prediction RMSE</h3><div class="big-value" id="metric-rmse">0.000</div><div class="mini-copy">Root-mean-square residual prediction error.</div></div>
+          <div class="data-card"><h3>GPU Energy</h3><div class="big-value" id="metric-energy">-- J</div><div class="mini-copy">Integrated board-power telemetry when nvidia-smi supplies power draw.</div></div>
+          <div class="data-card"><h3>Energy per Token</h3><div class="big-value" id="metric-ept">-- J</div><div class="mini-copy">Estimated energy divided by integrated token production.</div></div>
+          <div class="data-card"><h3>Oscillation Coherence</h3><div class="big-value" id="metric-coherence">--%</div><div class="mini-copy">Normalized agreement between the raw workload trajectory and the aligned filtered trajectory over the rolling window.</div></div>
+          <div class="data-card"><h3>Futurist Governor</h3><div class="big-value" id="metric-forecast">ACQUIRING</div><div class="mini-copy" id="forecast-copy">Bounded forward-pressure forecast; it never widens control authority.</div></div>
+        </div>
+        <div class="data-card" style="margin-top:10px"><h3>Baseline / Candidate Comparison</h3>
+          <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end">
+            <label class="micro">Baseline session<select id="compare-baseline" style="display:block;width:100%;margin-top:5px;padding:7px;border:1px solid #222"></select></label>
+            <label class="micro">Candidate session<select id="compare-candidate" style="display:block;width:100%;margin-top:5px;padding:7px;border:1px solid #222"></select></label>
+            <button class="btn primary" data-action="analytics-compare">Compare</button>
+          </div>
+          <div class="stats-three" id="comparison-summary" style="margin-top:9px"><div>Baseline<br><b>--</b></div><div>Governed<br><b>--</b></div><div>Verdict<br><b>INCONCLUSIVE</b></div></div>
+          <pre class="json-box" id="comparison-json" style="margin-top:9px">Select two saved sessions. Use the same workload, model, ambient conditions, and duration.</pre>
+        </div>
+        <div class="data-card" style="margin-top:10px"><h3>Metric Boundary</h3><p class="mini-copy">Intervention value requires a comparable baseline and controlled run. PulseFlow deliberately reports it as unavailable until a baseline/candidate pairing exists; it does not manufacture a performance claim from correlation alone.</p></div>
+      </div>
+
+      <div class="view content-view" data-view="replay">
+        <div class="data-card"><h3>Replay Laboratory</h3><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><select id="replay-session-select" style="min-width:280px;padding:7px;border:1px solid #222"></select><button class="btn" data-action="replay-load">Load Frames</button><button class="btn primary" data-action="replay-run">Run Candidate Controller</button></div><p class="mini-copy">Replay recalculates controller traces against recorded observations. It is a tuning screen, not a causal substitute for a live A/B benchmark.</p></div>
+        <div class="data-card" style="margin-top:10px"><h3>Timeline</h3><input id="replay-range" type="range" min="0" max="0" value="0" style="width:100%"><div class="replay-controls" style="margin-top:8px"><button class="btn" data-action="replay-first">|◀</button><button class="btn" data-action="replay-back">◀</button><button class="btn" data-action="replay-play">▶</button><button class="btn" data-action="replay-pause">Ⅱ</button><button class="btn" data-action="replay-forward">▶</button><button class="btn" data-action="replay-last">▶|</button><select id="replay-speed" style="padding:6px;border:1px solid #222"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option></select><span id="replay-position" class="micro">0 / 0</span></div></div>
+        <div class="section-grid" style="margin-top:10px"><div class="data-card"><h3>Replay Frame</h3><pre class="json-box" id="replay-frame-json">No replay loaded.</pre></div><div class="data-card"><h3>Candidate Report</h3><pre class="json-box" id="replay-report-json">No candidate replay run.</pre></div></div>
+      </div>
+
+      <div class="view content-view" data-view="logs">
+        <div class="data-card"><h3>Runtime and Persistent Event Ledger</h3><button class="btn" data-action="logs-refresh">Refresh Ledger</button><div class="table-wrap" style="margin-top:8px"><table><thead><tr><th>Time</th><th>Kind</th><th>Message</th></tr></thead><tbody id="logs-table"></tbody></table></div></div>
+      </div>
+
+      <div class="view content-view" data-view="config">
+        <div class="data-card"><h3>Bounded Live Tuning</h3><p class="mini-copy">The control sliders in the right rail update a bounded runtime configuration. Values are clamped by the backend. Change one parameter at a time and use replay plus controlled live trials before claiming an improvement.</p></div>
+        <div class="section-grid" style="margin-top:10px"><div class="data-card"><h3>Safety Boundary</h3><p class="mini-copy">PulseFlow does not alter clocks, voltage, fan curves, firmware, GPU power limits, or system power plans. Active control is restricted to a process explicitly launched or attached by the operator.</p></div><div class="data-card"><h3>ARIA Verification</h3><p class="mini-copy">Run <b>scripts\ARIA-Verify.ps1</b>. It compiles Rust, runs unit/integration tests, checks the UI action contract, parses browser JavaScript, validates schemas, and confirms that each declared button maps to a handler and backend route.</p></div></div>
+        <div class="data-card" style="margin-top:10px"><h3>Operator Quick Start</h3><div class="mini-copy"><b>Monitor only:</b> Serve mode observes the whole machine and records frames. MONITOR ONLY and UNBOUND are normal until a workload or agent is attached.<br><br><b>Start:</b> enables frame recording and, when a target process exists, bounded process modulation. <b>Pause:</b> stops modulation while telemetry remains live. <b>Reset:</b> opens a new recorded session.<br><br><b>Quiet / Balanced / Performance:</b> select the controller setpoint. Begin with Balanced. Change one slider at a time, press Apply Parameters, and compare saved sessions in Analytics.<br><br><b>Recommended learning order:</b> Recorder, Analytics, Replay, Shadow, Bounded Adaptive, Agent Policy. Do not promote a later stage until the earlier evidence gates pass.</div></div>
+        <div class="data-card" style="margin-top:10px"><h3>System Interlink Verification</h3><div class="mini-copy">The green interlink seal is derived from live backend facts, not from a decorative animation. <b>VERIFIED ACTIVE</b> requires an API connection, fresh observation frames, a living target PID, Windows governor support, an armed governor, and a non-monitor-only applied QoS. <b>OBSERVATION LINK</b> means PulseFlow is integrated for measurement and recording but is not yet modulating a target process. Launch with <b>Attach</b> or <b>Run</b> to test causal smoothing against a baseline.</div></div>
+        <div class="data-card" style="margin-top:10px"><h3>Current Configuration</h3><pre class="json-box" id="config-json">Loading…</pre></div>
+      </div>
+    </section>
+
+    <aside class="panel right-controls" aria-label="PulseFlow controls">
+      <div class="control-section control-command">
+        <div class="control-title-row"><div class="section-label">Control <span class="accent">●</span></div><div class="control-link-state" id="control-link-state" data-state="checking"><span></span><b>VERIFYING</b></div></div>
+        <div class="button-grid"><button class="btn primary" data-action="control-start">▶ Start</button><button class="btn" data-action="control-pause">Ⅱ Pause</button><button class="btn" data-action="control-reset">↻ Reset</button></div>
+        <div class="interlink-panel" id="interlink-panel" data-state="checking">
+          <div class="interlink-heading"><span class="interlink-mark" aria-hidden="true"><i></i></span><div><small>ARIA system interlink</small><strong id="interlink-title">VERIFYING RUNTIME</strong></div><button class="verify-link-btn" data-action="system-link-verify">Verify</button></div>
+          <div class="interlink-grid">
+            <div><span>API</span><b id="link-api">WAIT</b></div>
+            <div><span>Telemetry</span><b id="link-telemetry">WAIT</b></div>
+            <div><span>Target</span><b id="link-target">UNBOUND</b></div>
+            <div><span>Governor</span><b id="link-governor">OBSERVE</b></div>
+          </div>
+          <div class="channel-grid"><div><span>Host telemetry</span><b id="channel-host">LIVE</b></div><div><span>Process QoS</span><b id="channel-process">OFF</b></div><div><span>Agent adapter</span><b id="channel-agent">WAIT</b></div></div>
+          <div class="interlink-pairing">
+            <div class="pairing-label"><span>Discover → Connect → Verify → Enable</span><b id="pairing-protocol">LOCAL</b></div>
+            <div class="process-row"><select id="process-select" aria-label="Process to connect"><option value="">Discovering processes…</option></select><button class="btn" data-action="interlink-process-refresh">Discover</button></div>
+            <div class="pairing-detail" id="process-detail">Choose the workload responsible for the CPU or GPU activity you want to test.</div>
+            <div class="pairing-actions"><button class="btn" data-action="interlink-connect">Connect System</button><button class="btn" data-action="interlink-baseline">Capture Baseline</button><button class="btn enable" data-action="interlink-enable">Enable PulseFlow</button><button class="btn" data-action="interlink-disconnect">Disconnect</button><button class="btn" data-action="system-link-verify">Verify Link</button></div>
+          </div>
+          <p id="interlink-detail">Waiting for a backend state attestation.</p>
+          <div class="receipt-line"><span>Verification evidence</span><b id="link-receipt">NONE</b></div>
+        </div>
+      </div>
+      <div class="control-section"><div class="section-label">Operating Mode</div><div class="mode-grid"><button class="btn" data-action="mode-quiet">Quiet</button><button class="btn" data-action="mode-balanced">Balanced</button><button class="btn" data-action="mode-performance">Performance</button></div></div>
+      <div class="control-section"><div class="section-label">Pulse Schedule · Cycle View</div><div class="schedule"><div class="schedule-row"><b>CPU</b><div class="blocks" id="schedule-cpu"></div></div><div class="schedule-row"><b>GPU</b><div class="blocks" id="schedule-gpu"></div></div><div class="schedule-row"><b>RAM</b><div class="blocks" id="schedule-ram"></div></div><div class="schedule-row"><b>I/O</b><div class="blocks" id="schedule-io"></div></div></div></div>
+      <div class="control-section" style="border-bottom:0"><div class="section-label">Modulation Parameters</div><div class="slider-list">
+        <label class="slider-row"><span>Balanced setpoint</span><input id="tune-balanced_setpoint" type="range" min="0.35" max="0.90" step="0.01"><b data-output="balanced_setpoint">0.66</b></label>
+        <label class="slider-row"><span>Pulse gain Kp</span><input id="tune-kp" type="range" min="0" max="2" step="0.01"><b data-output="kp">0.65</b></label>
+        <label class="slider-row"><span>Integral Ki</span><input id="tune-ki" type="range" min="0" max="1" step="0.01"><b data-output="ki">0.08</b></label>
+        <label class="slider-row"><span>Derivative Kd</span><input id="tune-kd" type="range" min="0" max="1" step="0.01"><b data-output="kd">0.10</b></label>
+        <label class="slider-row"><span>Residue gain Kr</span><input id="tune-kr" type="range" min="0" max="2" step="0.01"><b data-output="kr">0.34</b></label>
+        <label class="slider-row"><span>Residue decay</span><input id="tune-residue_decay" type="range" min="0" max="0.99" step="0.01"><b data-output="residue_decay">0.82</b></label>
+        <label class="slider-row"><span>Filter alpha</span><input id="tune-filter_alpha" type="range" min="0.01" max="1" step="0.01"><b data-output="filter_alpha">0.24</b></label>
+        <label class="slider-row"><span>Slew / sample</span><input id="tune-slew_per_sample" type="range" min="0.001" max="0.25" step="0.001"><b data-output="slew_per_sample">0.070</b></label>
+      </div><button class="btn primary" style="width:100%;margin-top:10px" data-action="tuning-apply">Apply Parameters</button></div>
+    </aside>
+  </main>
+
+  <section class="bottom-grid">
+    <div class="bottom-cell"><h3>Data Capture Status · <span class="accent" id="recording-label">Recording</span></h3><canvas class="wave" id="record-wave"></canvas><div class="stats-three"><div>Duration<br><b id="record-duration">00:00:00</b></div><div>File size<br><b id="record-size">0 B</b></div><div>Samples<br><b id="record-samples">0</b></div></div><button class="btn" style="width:100%;margin-top:8px" data-action="recording-toggle">Pause Recording</button></div>
+    <div class="bottom-cell"><h3>JSONL Ledger · Live</h3><div class="ledger" id="ledger-preview">Waiting for events…</div><div class="micro">Stream: <b class="accent" id="ledger-state">ACTIVE</b></div></div>
+    <div class="bottom-cell"><h3>Replay Lab</h3><div class="mini-copy">Dataset<br><b id="bottom-replay-session">None selected</b><br><br>Frame range<br><b id="bottom-replay-range">0 / 0</b></div><div class="replay-controls" style="margin-top:8px"><button class="btn" data-action="replay-back">◀</button><button class="btn" data-action="replay-play">▶</button><button class="btn" data-action="replay-pause">Ⅱ</button><button class="btn" data-action="replay-forward">▶</button></div></div>
+    <div class="bottom-cell"><h3>Metrics · Live</h3><div class="metric-list"><div><span>Tokens / sec</span><b id="bottom-tps">0.0</b></div><div><span>Thermal oscillation</span><b id="bottom-thermal">--</b></div><div><span>Flow stability</span><b id="bottom-flow">0.00</b></div><div><span>Prediction error</span><b id="bottom-rmse">0.000</b></div><div><span>Policy confidence</span><b id="bottom-confidence">0.00</b></div></div></div>
+    <div class="bottom-cell"><h3>Heat Map · System</h3><canvas id="heatmap"></canvas><div class="micro" style="display:flex;justify-content:space-between"><span>Low</span><span>Medium</span><span>High</span></div></div>
+  </section>
+
+  <footer class="footer">
+    <div><span>Agent status</span><b><i class="status-dot"></i><span id="footer-agent" style="display:inline;color:inherit">UNBOUND</span></b></div>
+    <div><span>Policy</span><b id="footer-stage">RECORDER</b></div>
+    <div><span>Learning mode</span><b id="footer-shadow">SHADOW</b></div>
+    <div><span>Adaptation</span><b id="footer-adaptation">LOCKED</b></div>
+    <div><span>Last update</span><b id="footer-update">--</b></div>
+    <div><span>Uptime</span><b id="footer-uptime">00:00:00</b></div>
+    <div><span>Local time</span><b id="footer-time">--</b></div>
+  </footer>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script>
+(() => {
+  "use strict";
+  const App = {
+    status: null,
+    history: [],
+    sessions: [],
+    persistentEvents: [],
+    replayFrames: [],
+    replayIndex: 0,
+    replayTimer: null,
+    config: null,
+    processes: [],
+    interlinkHandshake: null,
+    interlinkReport: null,
+    interlinkPollCounter: 0,
+    tuningInitialized: false,
+    connected: false,
+    historySource: "live",
+    maxHistory: 3600,
+    chartWindow: 600,
+    pendingOperation: null,
+    startedAt: Date.now()
+  };
+
+  const $ = (selector) => document.querySelector(selector);
+  const $$ = (selector) => Array.from(document.querySelectorAll(selector));
+  const clamp = (value, min, max) => Math.min(max, Math.max(min, Number(value) || 0));
+  const number = (value, digits = 1) => Number.isFinite(Number(value)) ? Number(value).toFixed(digits) : "--";
+  const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[ch]));
+  const formatBytes = (bytes) => {
+    const value = Number(bytes) || 0;
+    if (value < 1024) return `${value} B`;
+    if (value < 1024 ** 2) return `${(value / 1024).toFixed(1)} KB`;
+    if (value < 1024 ** 3) return `${(value / 1024 ** 2).toFixed(1)} MB`;
+    return `${(value / 1024 ** 3).toFixed(2)} GB`;
+  };
+  const formatDuration = (seconds) => {
+    const total = Math.max(0, Math.floor(Number(seconds) || 0));
+    const h = String(Math.floor(total / 3600)).padStart(2, "0");
+    const m = String(Math.floor(total % 3600 / 60)).padStart(2, "0");
+    const s = String(total % 60).padStart(2, "0");
+    return `${h}:${m}:${s}`;
+  };
+  const toast = (message, error = false) => {
+    const node = $("#toast");
+    node.textContent = message;
+    node.classList.toggle("error", error);
+    node.classList.add("show");
+    clearTimeout(toast.timer);
+    toast.timer = setTimeout(() => node.classList.remove("show"), 3000);
+  };
+  async function api(path, options = {}) {
+    const init = {...options};
+    if (init.body && typeof init.body !== "string") {
+      init.headers = {...init.headers, "Content-Type": "application/json"};
+      init.body = JSON.stringify(init.body);
+    }
+    const response = await fetch(path, init);
+    if (!response.ok) {
+      let detail = `${response.status} ${response.statusText}`;
+      try { detail = (await response.json()).error || detail; } catch (_) {}
+      throw new Error(detail);
+    }
+    if (response.status === 204) return null;
+    const contentType = response.headers.get("content-type") || "";
+    return contentType.includes("json") ? response.json() : response.text();
+  }
+
+  const ACTION_HANDLERS = {
+    "control-start": () => postControl("start"),
+    "control-pause": () => postControl("pause"),
+    "control-reset": () => postControl("reset"),
+    "system-link-verify": verifySystemLink,
+    "interlink-process-refresh": loadProcesses,
+    "interlink-connect": connectSelectedProcess,
+    "interlink-baseline": captureBaseline,
+    "interlink-enable": enablePulseFlow,
+    "interlink-disconnect": disconnectInterlink,
+    "mode-quiet": () => postMode("quiet"),
+    "mode-balanced": () => postMode("balanced"),
+    "mode-performance": () => postMode("performance"),
+    "recording-toggle": toggleRecording,
+    "session-new": newSession,
+    "session-refresh": loadSessions,
+    "session-load": loadSessionCharts,
+    "session-live": loadHistory,
+    "session-export": exportSession,
+    "replay-load": loadReplayFrames,
+    "replay-run": runReplay,
+    "analytics-compare": compareSessions,
+    "replay-first": () => moveReplay("first"),
+    "replay-back": () => moveReplay(-1),
+    "replay-play": playReplay,
+    "replay-pause": pauseReplay,
+    "replay-forward": () => moveReplay(1),
+    "replay-last": () => moveReplay("last"),
+    "tuning-apply": applyTuning,
+    "stage-recorder": () => setStage("recorder"),
+    "stage-analytics": () => setStage("analytics"),
+    "stage-replay": () => setStage("replay"),
+    "stage-shadow": () => setStage("shadow"),
+    "stage-bounded_adaptive": () => setStage("bounded_adaptive"),
+    "stage-agent_policy": () => setStage("agent_policy"),
+    "logs-refresh": loadPersistentEvents
+  };
+
+  function computeOscillationDamping() {
+    const coherence = App.status && App.status.metrics ? App.status.metrics.oscillation_coherence : null;
+    return {damping: coherence == null ? null : clamp(coherence, 0, 1) * 100};
+  }
+
+  function deriveSystemLink(status) {
+    if (!App.connected || !status) return {state:"fracture", label:"LINK FRACTURE", api:"DOWN", telemetry:"STALE", target:"UNKNOWN", governor:"OFFLINE", processChannel:"OFF", agentChannel:"WAIT", detail:"The dashboard cannot attest the PulseFlow backend.", receipt:"NO BACKEND"};
+    const report = App.interlinkReport;
+    if (report && report.api_connected) {
+      const stateMap = {active:"active", activating:"armed", verified:"armed", connected:"connected", discovered:"discovered", paused:"paused", observation:"observe", disconnected:"observe", faulted:"fracture"};
+      const state = stateMap[report.state] || "fracture";
+      const label = state === "active" ? "VERIFIED ACTIVE" : state === "paused" ? "VERIFIED PAUSED" : state === "armed" ? "VERIFIED CONNECTED" : state === "connected" ? "CONNECTED · VERIFY REQUIRED" : state === "discovered" ? "TARGET DISCOVERED" : state === "observe" ? "OBSERVATION LINK" : "AUTHORITY FAULT";
+      const target = report.target_pid != null ? `PID ${report.target_pid}` : "UNBOUND";
+      const governor = state === "active" ? String(report.applied_qos || "active").replaceAll("_"," ").toUpperCase() : state === "paused" ? "PAUSED" : state === "armed" ? "READY" : state === "connected" ? "WAIT" : state === "observe" || state === "discovered" ? "MONITOR ONLY" : "FAULT";
+      const processChannel = report.channels && report.channels.process_qos ? "ACTIVE" : (state === "armed" || state === "paused") ? "READY" : "OFF";
+      const agentChannel = report.channels && report.channels.agent_adapter ? "LIVE" : "WAIT";
+      const detail = state === "active"
+        ? "Host telemetry, target identity, Windows process QoS, and applied control evidence are verified. Agent binding remains an independent explicit contract."
+        : state === "armed"
+          ? "The workload is connected and verified. Capture a baseline or enable PulseFlow to begin a separate governed session."
+          : state === "connected"
+            ? "The target identity is captured. Verify the link before baseline capture or governance."
+          : state === "paused"
+            ? "Governance is paused; verified observation and the target-specific dataset remain active."
+          : state === "discovered"
+            ? "A controllable target was discovered. Connect it to capture and attest its executable identity."
+          : state === "observe"
+            ? "System-wide telemetry and recording are live. Discover and connect the workload process to grant process-scoped modulation authority."
+            : "The target, telemetry, or governor invariant failed. Disconnect and rediscover the workload.";
+      return {state,label,api:"PASS",telemetry:report.telemetry_live?"LIVE":"ACQUIRING",target,governor,processChannel,agentChannel,detail,receipt:String(report.verification_id || "NO RECEIPT").slice(-28).toUpperCase()};
+    }
+    const telemetry = status.telemetry || {};
+    const process = telemetry.process || null;
+    const latest = status.latest_frame || null;
+    const sampleMs = App.config ? Number(App.config.sample_interval_ms) || 1000 : 1000;
+    const frameAge = latest ? Math.max(0, Date.now() - Number(latest.timestamp_ms || 0)) : Infinity;
+    const telemetryFresh = Boolean(latest) && frameAge <= Math.max(5000, sampleMs * 4);
+    const targetBound = status.target_pid != null;
+    const processAlive = !targetBound || Boolean(process && process.alive);
+    const supported = Boolean(status.governor_supported);
+    const active = Boolean(status.governor_active);
+    const applied = String((status.control || {}).applied_qos || "monitor_only");
+    const event = [...(status.events || [])].reverse().find(item => ["qos","control","interlink","boot"].includes(String(item.kind)));
+    const receipt = event ? `${String(event.kind).toUpperCase()} · ${new Date(Number(event.timestamp_ms)).toLocaleTimeString()}` : "NO CONTROL EVENT";
+    if (targetBound && (!processAlive || !supported)) return {state:"fracture",label:"LINK FRACTURE",api:"PASS",telemetry:telemetryFresh?"LIVE":"STALE",target:processAlive?`PID ${status.target_pid}`:"TARGET DEAD",governor:supported?"SUPPORTED":"UNSUPPORTED",processChannel:"OFF",agentChannel:telemetry.io_signal_fresh?"LIVE":"WAIT",detail:!processAlive?"The declared target process is no longer alive.":"This host does not expose the Windows process governor.",receipt};
+    if (targetBound && processAlive && supported && active && applied !== "monitor_only") return {state:"active",label:"VERIFIED ACTIVE",api:"PASS",telemetry:telemetryFresh?"LIVE":"DELAYED",target:`PID ${status.target_pid}`,governor:applied.replaceAll("_"," ").toUpperCase(),processChannel:"ACTIVE",agentChannel:telemetry.io_signal_fresh?"LIVE":"WAIT",detail:"Backend, telemetry, target identity, governor authority, and applied QoS are interlinked.",receipt};
+    if (targetBound && processAlive && supported) return {state:"armed",label:"VERIFIED CONNECTED",api:"PASS",telemetry:telemetryFresh?"LIVE":"DELAYED",target:`PID ${status.target_pid}`,governor:"READY",processChannel:"READY",agentChannel:telemetry.io_signal_fresh?"LIVE":"WAIT",detail:"The target and Windows governor are verified. Capture a baseline or enable PulseFlow.",receipt};
+    return {state:"observe",label:"OBSERVATION LINK",api:"PASS",telemetry:telemetryFresh?"LIVE":"ACQUIRING",target:"UNBOUND",governor:"MONITOR ONLY",processChannel:"OFF",agentChannel:telemetry.io_signal_fresh?"LIVE":"WAIT",detail:"PulseFlow is integrated for system-wide telemetry and recording. Discover a workload process to begin causal testing.",receipt};
+  }
+
+  function renderSystemLink(status) {
+    const link = deriveSystemLink(status);
+    [$("#header-system-link"),$("#interlink-panel"),$("#control-link-state"),$("#core-stage")].forEach(node => { if (node) node.dataset.state = link.state; });
+    setText("#header-link-state", link.label);
+    const controlState = $("#control-link-state b"); if (controlState) controlState.textContent = link.label;
+    setText("#interlink-title", link.label);
+    setText("#link-api", link.api); setText("#link-telemetry", link.telemetry); setText("#link-target", link.target); setText("#link-governor", link.governor);
+    setText("#channel-host", link.telemetry === "LIVE" ? "LIVE" : "ACQUIRE"); setText("#channel-process", link.processChannel); setText("#channel-agent", link.agentChannel);
+    setText("#interlink-detail", link.detail); setText("#link-receipt", link.receipt);
+    setText("#core-target", link.target); setText("#core-process-channel", link.processChannel); setText("#core-agent-channel", link.agentChannel);
+    applyAuthorityControls(status && status.authority_state ? status.authority_state : "observation");
+    return link;
+  }
+
+  function applyAuthorityControls(state) {
+    const setAction = (action, enabled, label) => {
+      $$("[data-action]").filter(node => node.dataset.action === action).forEach(node => {
+        node.disabled = !enabled || Boolean(App.pendingOperation);
+        if (label) node.textContent = label;
+      });
+    };
+    setAction("interlink-connect", state === "discovered", "Connect System");
+    setAction("system-link-verify", state === "connected", ["verified","active","paused"].includes(state) ? "Verified" : "Verify Link");
+    setAction("interlink-baseline", state === "verified" || state === "paused", "Capture Baseline");
+    setAction("interlink-enable", state === "verified" || state === "paused", state === "paused" ? "Resume Governor" : state === "active" ? "PulseFlow Active" : "Enable PulseFlow");
+    setAction("interlink-disconnect", ["connected","verified","active","paused","faulted"].includes(state), "Disconnect");
+    setAction("control-start", state === "paused", state === "paused" ? "▶ Resume" : "▶ Start");
+    setAction("control-pause", state === "active", state === "active" ? "Ⅱ Suspend Governor" : "Ⅱ Pause");
+  }
+
+  async function verifySystemLink(showToast = true) {
+    App.interlinkReport = await api("/api/interlink/verify", {method:"POST", body:{}});
+    const status = await api("/api/status");
+    App.status = status;
+    App.connected = true;
+    const link = renderSystemLink(status);
+    renderAll();
+    if (showToast) toast(`${link.label}: ${link.detail}`, link.state === "fracture");
+    return link;
+  }
+
+  async function loadInterlinkHandshake() {
+    App.interlinkHandshake = await api("/api/interlink/handshake");
+    setText("#pairing-protocol", String(App.interlinkHandshake.protocol || "LOCAL").replace("pulseflow.", "").toUpperCase());
+  }
+
+  async function loadProcesses() {
+    App.processes = await api("/api/processes");
+    const select = $("#process-select");
+    if (!select) return;
+    const prior = select.value;
+    const visible = App.processes.filter(process => process.controllable);
+    select.innerHTML = visible.map(process => `<option value="${process.pid}">${escapeHtml(process.name)} · PID ${process.pid} · CPU ${number(process.cpu_percent)}%</option>`).join("") || '<option value="">No controllable processes found</option>';
+    if (prior && visible.some(process => String(process.pid) === prior)) select.value = prior;
+    else if (App.status && App.status.target_pid != null && visible.some(process => process.pid === App.status.target_pid)) select.value = String(App.status.target_pid);
+    renderSelectedProcess();
+    toast(`Discovered ${visible.length} controllable processes.`);
+  }
+
+  function renderSelectedProcess() {
+    const select = $("#process-select");
+    const pid = select ? Number(select.value) : 0;
+    const process = App.processes.find(item => item.pid === pid);
+    setText("#process-detail", process ? `${process.name} · PID ${process.pid} · ${number(process.memory_mb,1)} MB · executable identity available in expanded evidence` : "Choose the workload responsible for the CPU or GPU activity you want to test.");
+  }
+
+  async function connectSelectedProcess() {
+    const pid = Number($("#process-select").value);
+    if (!pid) throw new Error("Select a workload process first.");
+    const result = await api("/api/interlink/connect", {method:"POST", body:{pid}});
+    App.interlinkReport = result.verification;
+    App.history = [];
+    await Promise.allSettled([pollStatus(), loadHistory(), loadSessions()]);
+    toast(`Connected PID ${pid}. Verification is required before authority is granted.`);
+  }
+
+  async function captureBaseline() {
+    const result = await api("/api/interlink/baseline", {method:"POST", body:{}});
+    App.interlinkReport = result.verification;
+    App.history = [];
+    await Promise.allSettled([pollStatus(), loadHistory(), loadSessions()]);
+    toast(`Baseline session ${result.session_id} started with modulation paused.`);
+  }
+
+  async function enablePulseFlow() {
+    const result = await api("/api/interlink/enable", {method:"POST", body:{}});
+    App.interlinkReport = result.verification;
+    App.history = [];
+    await Promise.allSettled([pollStatus(), loadHistory(), loadSessions()]);
+    setTimeout(() => pollStatus().catch(console.error), 1300);
+    toast(`PulseFlow enabled. Governed session ${result.session_id} started.`);
+  }
+
+  async function disconnectInterlink() {
+    App.interlinkReport = await api("/api/interlink/disconnect", {method:"POST", body:{}});
+    App.history = [];
+    await Promise.allSettled([pollStatus(), loadHistory(), loadSessions()]);
+    toast("Process authority disconnected; host telemetry remains live.");
+  }
+
+  function bindControls() {
+    $$('[data-action]').forEach(button => button.addEventListener("click", async () => {
+      const action = button.dataset.action;
+      const handler = ACTION_HANDLERS[action];
+      if (!handler) return toast(`No handler registered for ${action}`, true);
+      if (App.pendingOperation) return;
+      App.pendingOperation = action;
+      button.disabled = true;
+      try { await handler(button); } catch (error) { toast(error.message, true); }
+      finally {
+        App.pendingOperation = null;
+        if (App.status) applyAuthorityControls(App.status.authority_state || "observation");
+      }
+    }));
+    $$('[data-tab]').forEach(button => button.addEventListener("click", () => switchTab(button.dataset.tab)));
+    $$('input[id^="tune-"]').forEach(input => input.addEventListener("input", () => {
+      const field = input.id.slice(5);
+      const output = document.querySelector(`[data-output="${field}"]`);
+      if (output) output.textContent = Number(input.value).toFixed(field === "slew_per_sample" ? 3 : 2);
+    }));
+    $("#replay-range").addEventListener("input", event => {
+      App.replayIndex = Number(event.target.value);
+      renderReplayFrame();
+    });
+    const processSelect = $("#process-select");
+    if (processSelect) processSelect.addEventListener("change", renderSelectedProcess);
+    $("#chart-window").addEventListener("change", event => {
+      App.chartWindow = event.target.value === "all" ? Infinity : Number(event.target.value);
+      drawCharts();
+      drawHeatmap();
+    });
+  }
+
+  function switchTab(tab) {
+    $$('[data-tab]').forEach(node => node.classList.toggle("active", node.dataset.tab === tab));
+    $$('[data-view]').forEach(node => node.classList.toggle("active", node.dataset.view === tab));
+    if (tab === "dataset") loadSessions();
+    if (tab === "logs") loadPersistentEvents();
+  }
+
+  async function postControl(command) {
+    await api("/api/control", {method: "POST", body: {command}});
+    toast(`Control command ${command} accepted.`);
+    await pollStatus();
+    if (command === "reset") { App.history = []; await loadHistory(); await loadSessions(); }
+  }
+  async function postMode(mode) {
+    await api("/api/mode", {method: "POST", body: {mode}});
+    toast(`Mode set to ${mode}.`);
+    await pollStatus();
+  }
+  async function toggleRecording() {
+    const enabled = !(App.status && App.status.recording);
+    await api("/api/recording", {method: "POST", body: {enabled}});
+    toast(enabled ? "Observation recording enabled." : "Observation recording paused.");
+    await pollStatus();
+  }
+  async function newSession() {
+    const result = await api("/api/session/new", {method: "POST"});
+    App.history = [];
+    toast(`New session ${result.session_id} created.`);
+    await loadHistory();
+    await loadSessions();
+  }
+  function selectedSession(selectId = "#session-select") {
+    return $(selectId).value || (App.status && App.status.session_id) || "";
+  }
+  function exportSession() {
+    const session = selectedSession();
+    if (!session) throw new Error("No session selected.");
+    window.location.href = `/api/export/${encodeURIComponent(session)}`;
+  }
+  async function setStage(stage) {
+    await api("/api/learning-stage", {method: "POST", body: {stage}});
+    toast(`Learning stage set to ${stage}.`);
+    await pollStatus();
+  }
+  async function applyTuning() {
+    const fields = ["balanced_setpoint","kp","ki","kd","kr","residue_decay","filter_alpha","slew_per_sample"];
+    const body = Object.fromEntries(fields.map(field => [field, Number($(`#tune-${field}`).value)]));
+    const result = await api("/api/tuning", {method: "POST", body});
+    App.status.tuning = result;
+    toast("Bounded runtime tuning applied.");
+  }
+  async function loadHistory() {
+    const result = await api(`/api/history?limit=${App.maxHistory}`);
+    App.history = result.frames || [];
+    App.historySource = "live";
+    renderAll();
+    toast("Live session graphs restored.");
+  }
+  async function loadSessionCharts() {
+    const session = selectedSession();
+    if (!session) throw new Error("No session selected.");
+    const result = await api(`/api/session/${encodeURIComponent(session)}?limit=10000`);
+    App.history = result.frames || [];
+    App.historySource = session;
+    renderAll();
+    switchTab("telemetry");
+    toast(`${App.history.length} persisted frames loaded into the graphs.`);
+  }
+  async function loadSessions() {
+    App.sessions = await api("/api/sessions");
+    renderSessions();
+  }
+  async function loadPersistentEvents() {
+    App.persistentEvents = await api("/api/ledger/tail?limit=300");
+    renderLogs();
+  }
+  async function loadReplayFrames() {
+    const session = selectedSession("#replay-session-select");
+    if (!session) throw new Error("Select a replay session.");
+    const result = await api(`/api/session/${encodeURIComponent(session)}?limit=10000`);
+    App.replayFrames = result.frames || [];
+    App.replayIndex = 0;
+    $("#replay-range").max = Math.max(0, App.replayFrames.length - 1);
+    $("#replay-range").value = 0;
+    $("#bottom-replay-session").textContent = session;
+    renderReplayFrame();
+    toast(`${App.replayFrames.length} frames loaded.`);
+  }
+  async function runReplay() {
+    const session = selectedSession("#replay-session-select");
+    if (!session) throw new Error("Select a replay session.");
+    const report = await api("/api/replay", {method: "POST", body: {session_id: session}});
+    $("#replay-report-json").textContent = JSON.stringify(report, null, 2);
+    toast("Candidate controller replay completed.");
+  }
+  async function compareSessions() {
+    const baseline = $("#compare-baseline").value;
+    const candidate = $("#compare-candidate").value;
+    if (!baseline || !candidate) throw new Error("Select both baseline and candidate sessions.");
+    if (baseline === candidate) throw new Error("Baseline and candidate must be different sessions.");
+    const report = await api("/api/compare", {method: "POST", body: {
+      baseline_session_id: baseline,
+      candidate_session_id: candidate
+    }});
+    const cells = $$("#comparison-summary div b");
+    if (cells.length === 3) {
+      cells[0].textContent = `${number(report.baseline.cpu_mean,1)}% CPU · ${number(report.baseline.latency_p95_ms,0)} ms`;
+      cells[1].textContent = `${number(report.candidate.cpu_mean,1)}% CPU · ${number(report.candidate.latency_p95_ms,0)} ms`;
+      cells[2].textContent = `${report.verdict} · ${number(report.evidence_quality * 100,0)}% EVIDENCE`;
+    }
+    $("#comparison-json").textContent = JSON.stringify(report, null, 2);
+    toast(report.comparable ? "Session comparison completed." : "Comparison completed with evidence warning.");
+  }
+  function moveReplay(direction) {
+    if (!App.replayFrames.length) return;
+    if (direction === "first") App.replayIndex = 0;
+    else if (direction === "last") App.replayIndex = App.replayFrames.length - 1;
+    else App.replayIndex = clamp(App.replayIndex + direction, 0, App.replayFrames.length - 1);
+    $("#replay-range").value = App.replayIndex;
+    renderReplayFrame();
+  }
+  function playReplay() {
+    if (!App.replayFrames.length || App.replayTimer) return;
+    const speed = Number($("#replay-speed").value) || 1;
+    App.replayTimer = setInterval(() => {
+      if (App.replayIndex >= App.replayFrames.length - 1) return pauseReplay();
+      moveReplay(1);
+    }, Math.max(50, 1000 / speed));
+  }
+  function pauseReplay() {
+    if (App.replayTimer) clearInterval(App.replayTimer);
+    App.replayTimer = null;
+  }
+
+  async function pollStatus() {
+    try {
+      const status = await api("/api/status");
+      const previousSequence = App.history.length ? App.history[App.history.length - 1].sequence : -1;
+      App.status = status;
+      App.connected = true;
+      App.interlinkPollCounter += 1;
+      if (!App.interlinkReport || App.interlinkPollCounter % 5 === 0) {
+        try { App.interlinkReport = await api("/api/interlink/verify"); } catch (_) { App.interlinkReport = null; }
+      }
+      const latest = status.latest_frame || null;
+      if (App.historySource === "live" && latest && latest.sequence !== previousSequence) {
+        if (!App.history.length || App.history[App.history.length - 1].timestamp_ms !== latest.timestamp_ms) App.history.push(latest);
+        while (App.history.length > App.maxHistory) App.history.shift();
+      }
+      renderAll();
+    } catch (error) {
+      App.connected = false;
+      $("#connection-label").textContent = "DISCONNECTED";
+      renderSystemLink(null);
+      console.error(error);
+    }
+  }
+
+  function renderAll() {
+    if (!App.status) return;
+    const s = App.status, t = s.telemetry || {}, c = s.control || {}, m = s.metrics || {}, io = t.io || {}, gpu = t.gpu || {}, d = s.directive || {};
+    setText("#history-source", App.historySource === "live" ? `LIVE · ${s.session_id}` : `ARCHIVE · ${App.historySource}`);
+    $("#connection-label").textContent = App.connected ? "CONNECTED" : "DISCONNECTED";
+    $("#header-temp").textContent = gpu.temperature_c != null ? `${number(gpu.temperature_c,0)}°C` : "--°C";
+    $("#header-mode").textContent = String(s.mode || "balanced").toUpperCase();
+    $("#header-session").textContent = String(s.session_id || "--").slice(-12).toUpperCase();
+    $("#header-agent").textContent = s.agent_bound ? String(io.agent || "bound").toUpperCase() : "UNBOUND";
+    $("#header-qos").textContent = String(c.applied_qos || "monitor_only").replaceAll("_"," ").toUpperCase();
+    $("#record-lamp").style.opacity = s.recording ? "1" : ".15";
+    const systemLink = renderSystemLink(s);
+
+    setText("#cpu-value", `${number(t.cpu_percent)}%`); setText("#gpu-value", gpu.utilization_percent != null ? `${number(gpu.utilization_percent)}%` : "--%");
+    setText("#ram-value", `${number(t.memory_percent)}%`); setText("#thermal-value", gpu.temperature_c != null ? `${number(gpu.temperature_c)}°C` : "--°C");
+    setText("#latency-value", `${number(m.latency_p95_ms)} ms`); setText("#residue-value", number(c.residue_memory,3));
+    setText("#queue-value", String((io.input_queue || 0) + (io.output_queue || 0)));
+
+    const efficiency = clamp((1 - Math.abs(c.residue_memory || 0)) * 100,0,100);
+    const stability = clamp((m.flow_stability || 0) * 100,0,100);
+    const coherence = computeOscillationDamping();
+    setText("#coherence-damping", coherence.damping == null ? "--%" : `${number(coherence.damping,1)}%`);
+    setText("#coherence-mode", systemLink.state === "active" ? "CONTROLLED" : systemLink.state === "armed" ? "ARMED" : "OBSERVE");
+    setGauge("#gauge-efficiency", "#efficiency-value", efficiency); setGauge("#gauge-stability", "#stability-value", stability);
+    setMeter("#stress-meter", "#stress-meter-value", (c.filtered_stress || 0) * 100);
+    const headroom = gpu.temperature_c != null ? clamp((82 - gpu.temperature_c) / 37 * 100,0,100) : 0;
+    setMeter("#headroom-meter", "#headroom-value", headroom, gpu.temperature_c != null ? `${number(headroom,0)}%` : "--");
+    setMeter("#confidence-meter", "#confidence-value", (m.policy_confidence || 0) * 100);
+
+    setText("#core-stability", stability > 80 ? "STABLE" : stability > 55 ? "TRACKING" : "ACQUIRING");
+    setText("#core-turbulence", String(m.turbulence_state || "insufficient_data").replaceAll("_"," ").toUpperCase());
+    setText("#core-phase", String(c.phase || "hold").toUpperCase()); setText("#core-error", number(Math.abs(c.error || 0),3));
+    setText("#sample-clock", App.config ? `${number(1000 / App.config.sample_interval_ms,2)} Hz` : "1.00 Hz");
+    setText("#cycle-value", String(s.session_samples || 0)); setText("#dt-value", App.config ? `${App.config.sample_interval_ms} ms` : "1000 ms");
+    setText("#node-cpu", `${number(t.cpu_percent)}%`); setText("#node-process", t.process ? `${number(t.process.cpu_percent)}%` : "--%");
+    setText("#node-ram", `${number(t.memory_percent)}%`); setText("#node-ram-used", `${number(t.memory_used_gb,1)} GB`);
+    setText("#node-gpu", gpu.utilization_percent != null ? `${number(gpu.utilization_percent)}%` : "--%"); setText("#node-gpu-temp", gpu.temperature_c != null ? `${number(gpu.temperature_c)}°C` : "--°C");
+    setText("#node-io", String((io.input_queue||0)+(io.output_queue||0))); setText("#node-latency", `${number(io.latency_ms)} ms`);
+    setText("#stability-label", stability > 80 ? "STABLE" : stability > 55 ? "TRACKING" : "VARIABLE"); setText("#core-confidence", number(m.policy_confidence,2));
+    setText("#core-authority", `${number(clamp(c.control_authority || 0,0,1) * 100,0)}%`);
+    setText("#core-modulation", `${number(clamp(c.applied_modulation || 0,0,1) * 100,0)}%`); setText("#core-qos", String(c.applied_qos || "monitor_only").replaceAll("_"," ").toUpperCase());
+    const coreStage = $("#core-stage"); if (coreStage) coreStage.style.setProperty("--modulation", clamp(c.applied_modulation || 0,0,1));
+
+    setText("#telemetry-stress", number(c.filtered_stress,3)); setText("#process-cpu", t.process ? `${number(t.process.cpu_percent)}%` : "--%");
+    setText("#process-copy", t.process ? `PID ${t.process.pid} · ${number(t.process.memory_mb,1)} MB · ${t.process.alive ? "alive" : "not visible"}` : "No governed process is attached.");
+    setText("#telemetry-residue", number(c.residue,4)); setText("#io-throughput", `${number(io.tokens_per_second)} t/s`);
+    setText("#io-copy", t.io_signal_fresh ? `${io.agent} / ${io.model} · queue ${(io.input_queue||0)+(io.output_queue||0)} · latency ${number(io.latency_ms)} ms` : "Waiting for a fresh agent or workload signal.");
+
+    setText("#dataset-samples", String(s.session_samples || 0)); setText("#dataset-session", s.session_id || "--"); setText("#dataset-size", formatBytes(s.session_bytes));
+    const lastFrame = App.history[App.history.length - 1]; if (lastFrame) $("#latest-frame-json").textContent = JSON.stringify(lastFrame,null,2);
+
+    setText("#directive-route", String(d.model_route || "balanced").toUpperCase()); setText("#directive-reason", d.reason || "Waiting for telemetry.");
+    setText("#directive-concurrency", String(d.recommended_concurrency || 1)); setText("#directive-batch", String(d.recommended_batch_size || 1));
+    setText("#directive-token", number(d.token_budget_scale,2)); setText("#directive-retrieval", number(d.retrieval_depth_scale,2)); $("#directive-json").textContent = JSON.stringify(d,null,2);
+    const a = s.adaptive_suggestion || {};
+    setText("#adaptive-state", a.applied ? "APPLIED" : a.eligible ? "CANDIDATE" : "HOLD");
+    setText("#adaptive-reason", a.reason || "Waiting for finalized evidence.");
+    setText("#adaptive-samples", String(a.based_on_samples || 0));
+    setText("#adaptive-confidence", number(a.confidence,2));
+    setText("#adaptive-applied", a.applied ? "YES" : "NO");
+    $("#adaptive-json").textContent = JSON.stringify(a,null,2);
+
+    setText("#metric-throughput", `${number(m.average_tokens_per_second)} t/s`); setText("#metric-flow", number(m.flow_stability,3));
+    setText("#metric-thermal", m.thermal_oscillation_c != null ? `${number(m.thermal_oscillation_c,2)}°C` : "--°C"); setText("#metric-rmse", number(m.prediction_rmse,4));
+    setText("#metric-energy", m.cumulative_gpu_energy_joules != null ? `${number(m.cumulative_gpu_energy_joules,1)} J` : "-- J"); setText("#metric-ept", m.energy_per_token_joules != null ? `${number(m.energy_per_token_joules,4)} J` : "-- J");
+    setText("#metric-coherence", m.oscillation_coherence != null ? `${number(m.oscillation_coherence * 100,1)}%` : "--%");
+    setText("#metric-forecast", m.forecast_stress != null ? `${number(m.forecast_stress * 100,1)}% · ${number(m.forecast_confidence * 100,0)}% CONF` : "ACQUIRING");
+    setText("#forecast-copy", m.forecast_stress != null ? `Trend ${number(m.forecast_trend_per_sample,4)} / sample · pressure risk ${number(m.forecast_pressure_risk * 100,1)}% · ${String(m.turbulence_state || "insufficient_data").replaceAll("_"," ").toUpperCase()}` : "A minimum of eight aligned samples is required; forecasts never widen control authority.");
+
+    setText("#recording-label", s.recording ? "RECORDING" : "PAUSED"); setText("#record-duration", formatDuration(m.elapsed_seconds)); setText("#record-size", formatBytes(s.session_bytes)); setText("#record-samples", String(s.session_samples));
+    $$('[data-action="recording-toggle"]').forEach(node => node.textContent = s.recording ? "Pause Recording" : "Start Recording");
+    setText("#ledger-state", s.recording ? "ACTIVE" : "PAUSED");
+    setText("#bottom-tps", number(m.average_tokens_per_second)); setText("#bottom-thermal", m.thermal_oscillation_c != null ? `${number(m.thermal_oscillation_c,2)}°C` : "--");
+    setText("#bottom-flow", number(m.flow_stability,2)); setText("#bottom-rmse", number(m.prediction_rmse,3)); setText("#bottom-confidence", number(m.policy_confidence,2));
+    setText("#footer-agent", s.agent_bound ? String(io.agent || "bound").toUpperCase() : "UNBOUND"); setText("#footer-stage", String(s.learning_stage || "recorder").replaceAll("_"," ").toUpperCase());
+    setText("#footer-shadow", d.shadow_only ? "SHADOW" : "DIRECTIVE LIVE"); setText("#footer-adaptation", (App.config && App.config.agent_policy.allow_bounded_adaptation) ? "BOUNDED" : "LOCKED");
+    setText("#footer-update", "NOW"); setText("#footer-uptime", formatDuration((Date.now()-App.startedAt)/1000)); setText("#footer-time", new Date().toLocaleTimeString());
+
+    $$('.mode-grid .btn').forEach(node => node.classList.toggle("active", node.dataset.action === `mode-${s.mode}`));
+    $$('.stage-grid .btn').forEach(node => node.classList.toggle("active", node.dataset.action === `stage-${s.learning_stage}`));
+    if (!App.tuningInitialized && s.tuning) initializeTuning(s.tuning);
+    renderSchedules(c, t); renderTables(); renderLedger(); drawCharts(); drawHeatmap(); drawCoherenceScope();
+  }
+
+  function setText(selector, value) { const node = $(selector); if (node) node.textContent = value; }
+  function setGauge(ringSelector, textSelector, value) { const v = clamp(value,0,100); $(ringSelector).style.setProperty("--value", v); $(textSelector).textContent = Math.round(v); }
+  function setMeter(barSelector, textSelector, value, label = null) { const v = clamp(value,0,100); $(barSelector).style.width = `${v}%`; $(textSelector).textContent = label ?? `${Math.round(v)}%`; }
+  function initializeTuning(tuning) {
+    ["balanced_setpoint","kp","ki","kd","kr","residue_decay","filter_alpha","slew_per_sample"].forEach(field => {
+      const input = $(`#tune-${field}`); if (!input || tuning[field] == null) return; input.value = tuning[field]; input.dispatchEvent(new Event("input"));
+    });
+    App.tuningInitialized = true;
+  }
+  function renderSchedules(control, telemetry) {
+    const values = {cpu:(telemetry.cpu_percent||0)/100,gpu:((telemetry.gpu||{}).utilization_percent||0)/100,ram:(telemetry.memory_percent||0)/100,io:(((telemetry.io||{}).input_queue||0)+((telemetry.io||{}).output_queue||0))/64};
+    Object.entries(values).forEach(([name,value]) => {
+      const root = $(`#schedule-${name}`); if (!root) return; root.innerHTML = "";
+      for (let i=0;i<12;i++) { const cell=document.createElement("i"); const threshold=(i+1)/12; if (value>=threshold) cell.className = i===Math.floor(clamp(control.applied_modulation||0,0,.99)*12) ? "hot" : "on"; root.appendChild(cell); }
+    });
+  }
+  function renderTables() {
+    const rows = App.history.slice(-20).reverse().map(frame => `<tr><td>${frame.sequence}</td><td>${number(frame.machine.cpu_percent)}%</td><td>${frame.machine.gpu_percent!=null?number(frame.machine.gpu_percent)+"%":"--"}</td><td>${number(frame.machine.ram_percent)}%</td><td>${frame.machine.gpu_temperature_c!=null?number(frame.machine.gpu_temperature_c)+"°C":"--"}</td><td>${number(frame.controller.filtered_stress,3)}</td><td>${number(frame.controller.residue,3)}</td><td>${escapeHtml(frame.controller.applied_qos||"")}</td></tr>`).join("");
+    $("#telemetry-table").innerHTML = rows || '<tr><td colspan="8">No frames recorded yet.</td></tr>';
+  }
+  function renderSessions() {
+    const options = App.sessions.map(session => `<option value="${escapeHtml(session.session_id)}">${escapeHtml(session.session_id)} · ${session.samples} samples</option>`).join("");
+    [$("#session-select"),$("#replay-session-select"),$("#compare-baseline"),$("#compare-candidate")].forEach((select,index) => { const prior=select.value; select.innerHTML=options || '<option value="">No sessions</option>'; if (prior && App.sessions.some(s=>s.session_id===prior)) select.value=prior; else if (index === 2 && App.sessions.length > 1) select.value=App.sessions[1].session_id; else if (App.status) select.value=App.status.session_id; });
+    $("#session-table").innerHTML = App.sessions.map(session => `<tr><td>${escapeHtml(session.session_id)}</td><td>${session.samples}</td><td>${formatBytes(session.bytes)}</td><td>${session.last_sample_at_ms?new Date(Number(session.last_sample_at_ms)).toLocaleString():"--"}</td><td>${escapeHtml(session.target_label)}</td></tr>`).join("") || '<tr><td colspan="5">No saved sessions.</td></tr>';
+  }
+  function renderLedger() {
+    const events = [...(App.persistentEvents||[]), ...((App.status&&App.status.events)||[])].slice(-8);
+    $("#ledger-preview").textContent = events.map(event => JSON.stringify(event)).join("\n") || "Waiting for events…";
+  }
+  function renderLogs() {
+    const runtime = (App.status && App.status.events) || [];
+    const merged = [...App.persistentEvents, ...runtime].sort((a,b)=>Number(b.timestamp_ms)-Number(a.timestamp_ms)).slice(0,300);
+    $("#logs-table").innerHTML = merged.map(event => `<tr><td>${new Date(Number(event.timestamp_ms)).toLocaleString()}</td><td>${escapeHtml(event.kind)}</td><td>${escapeHtml(event.message)}</td></tr>`).join("") || '<tr><td colspan="3">No events.</td></tr>';
+  }
+  function renderReplayFrame() {
+    const total = App.replayFrames.length;
+    const frame = total ? App.replayFrames[clamp(App.replayIndex,0,total-1)] : null;
+    $("#replay-position").textContent = `${total?App.replayIndex+1:0} / ${total}`; $("#bottom-replay-range").textContent = `${total?App.replayIndex+1:0} / ${total}`;
+    $("#replay-frame-json").textContent = frame ? JSON.stringify(frame,null,2) : "No replay loaded.";
+  }
+  function drawCharts() {
+    const series = {
+      "chart-cpu": App.history.map(f=>f.machine.cpu_percent),
+      "chart-gpu": App.history.map(f=>f.machine.gpu_percent).filter(v=>v!=null),
+      "chart-ram": App.history.map(f=>f.machine.ram_percent),
+      "chart-thermal": App.history.map(f=>f.machine.gpu_temperature_c).filter(v=>v!=null),
+      "chart-latency": App.history.map(f=>f.outcome.latency_ms),
+      "chart-residue": App.history.map(f=>Math.abs(f.controller.residue_memory||0)),
+      "chart-queue": App.history.map(f=>(f.workload.input_queue||0)+(f.workload.output_queue||0))
+    };
+    const visible = Number.isFinite(App.chartWindow) ? App.chartWindow : App.history.length;
+    Object.entries(series).forEach(([id,values])=>drawLine($("#"+id),values.slice(-visible)));
+    drawLine($("#record-wave"),App.history.map(f=>f.controller.raw_stress).slice(-Math.min(visible,600)),true);
+  }
+  function drawLine(canvas, values, filled=false) {
+    if (!canvas) return; const rect=canvas.getBoundingClientRect(); const ratio=window.devicePixelRatio||1; canvas.width=Math.max(1,rect.width*ratio);canvas.height=Math.max(1,rect.height*ratio);const ctx=canvas.getContext("2d");ctx.scale(ratio,ratio);const w=rect.width,h=rect.height;ctx.clearRect(0,0,w,h);ctx.strokeStyle="#d4d0c9";ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(0,h-1);ctx.lineTo(w,h-1);ctx.stroke();if(values.length<2)return;const finite=values.filter(Number.isFinite);const min=Math.min(...finite,0),max=Math.max(...finite,1);const span=max-min||1;ctx.beginPath();values.forEach((value,index)=>{const x=index/(values.length-1)*w;const y=h-3-(value-min)/span*(h-7);if(index===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);});ctx.strokeStyle="#008f4c";ctx.lineWidth=1.4;ctx.stroke();if(filled){ctx.lineTo(w,h);ctx.lineTo(0,h);ctx.closePath();ctx.fillStyle="rgba(0,143,76,.14)";ctx.fill();}
+  }
+  function drawCoherenceScope() {
+    const canvas = $("#coherence-scope");
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const ratio = window.devicePixelRatio || 1;
+    canvas.width = Math.max(1, rect.width * ratio); canvas.height = Math.max(1, rect.height * ratio);
+    const ctx = canvas.getContext("2d"); ctx.scale(ratio, ratio); ctx.clearRect(0,0,rect.width,rect.height);
+    const frames = App.history.slice(-90);
+    if (frames.length < 2) return;
+    const draw = (values, stroke, width) => {
+      ctx.beginPath();
+      values.forEach((value,index) => { const x=index/(values.length-1)*rect.width; const y=rect.height-3-clamp(value,0,1)*(rect.height-6); if(index===0)ctx.moveTo(x,y);else ctx.lineTo(x,y); });
+      ctx.strokeStyle=stroke;ctx.lineWidth=width;ctx.stroke();
+    };
+    draw(frames.map(frame=>Number(frame.controller.raw_stress)||0),"rgba(105,127,116,.62)",1);
+    draw(frames.map(frame=>Number(frame.controller.filtered_stress)||0),"#00a85a",1.8);
+  }
+
+  function drawHeatmap() {
+    const canvas=$("#heatmap");const rect=canvas.getBoundingClientRect();const ratio=window.devicePixelRatio||1;canvas.width=Math.max(1,rect.width*ratio);canvas.height=Math.max(1,rect.height*ratio);const ctx=canvas.getContext("2d");ctx.scale(ratio,ratio);const frames=App.history.slice(-Math.min(Number.isFinite(App.chartWindow) ? App.chartWindow : 120,120));const rows=[f=>f.machine.cpu_percent/100,f=>(f.machine.gpu_percent||0)/100,f=>f.machine.ram_percent/100,f=>clamp(((f.workload.input_queue||0)+(f.workload.output_queue||0))/64,0,1)];const cw=rect.width/Math.max(frames.length,1),rh=rect.height/4;ctx.clearRect(0,0,rect.width,rect.height);frames.forEach((frame,x)=>rows.forEach((getter,y)=>{const value=clamp(getter(frame),0,1);ctx.fillStyle=`rgba(0,143,76,${0.08+value*.86})`;ctx.fillRect(x*cw,y*rh,Math.max(1,cw-1),Math.max(1,rh-1));}));
+  }
+
+  async function init() {
+    bindControls();
+    window.addEventListener("resize", () => { drawCharts(); drawHeatmap(); drawCoherenceScope(); });
+    try { App.config = await api("/api/config"); $("#config-json").textContent = JSON.stringify(App.config,null,2); } catch (error) { $("#config-json").textContent = error.message; }
+    await Promise.allSettled([loadInterlinkHandshake(), loadProcesses(), loadHistory(), loadSessions(), loadPersistentEvents()]);
+    await pollStatus();
+    setInterval(pollStatus, 1000);
+    setInterval(() => { setText("#footer-uptime", formatDuration((Date.now()-App.startedAt)/1000)); setText("#footer-time", new Date().toLocaleTimeString()); },1000);
+  }
+  init();
+})();
+</script>
+</body>
+</html>

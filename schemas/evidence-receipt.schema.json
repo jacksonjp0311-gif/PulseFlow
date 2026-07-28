@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pulseflow.local/schemas/evidence-receipt.schema.json",
+  "title": "PulseFlow Authority Evidence Receipt",
+  "type": "object",
+  "required": [
+    "schema_version", "receipt_id", "timestamp_ms", "session_id",
+    "requested_transition", "previous_state", "resulting_state",
+    "verification_checks", "qos_action_result",
+    "controller_configuration_hash", "backend_build", "success", "receipt_hash"
+  ],
+  "properties": {
+    "schema_version": {"const": "pulseflow.evidence-receipt.v1"},
+    "receipt_id": {"type": "string", "minLength": 4},
+    "timestamp_ms": {"type": "integer", "minimum": 0},
+    "session_id": {"type": "string", "minLength": 1, "maxLength": 128},
+    "target_pid": {"type": ["integer", "null"], "minimum": 0},
+    "executable": {"type": ["string", "null"]},
+    "executable_path_hash": {"type": ["string", "null"]},
+    "requested_transition": {"type": "string"},
+    "previous_state": {"type": "string"},
+    "resulting_state": {"type": "string"},
+    "verification_checks": {"type": "array", "items": {"type": "string"}},
+    "qos_action_result": {"type": "string"},
+    "controller_configuration_hash": {"type": "string"},
+    "backend_build": {"type": "string"},
+    "success": {"type": "boolean"},
+    "failure_reason": {"type": ["string", "null"]},
+    "previous_receipt_hash": {"type": ["string", "null"]},
+    "receipt_hash": {"type": "string", "minLength": 16}
+  },
+  "additionalProperties": false
+}

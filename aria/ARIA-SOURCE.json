@@ -1,0 +1,26 @@
+{
+  "schema": "aria-source-provenance/v1",
+  "repository": "https://github.com/jacksonjp0311-gif/ARIA",
+  "repository_full_name": "jacksonjp0311-gif/ARIA",
+  "default_branch": "main",
+  "observed_date": "2026-07-27",
+  "source_files": [
+    {
+      "path": "README.md",
+      "blob_sha": "961d0ebb1803cfdc9383e0f997c5bfacc02517a4",
+      "used_for": "verify-before-execute trust model, staged causal gates, content-addressed evidence"
+    },
+    {
+      "path": "aria.ps1",
+      "blob_sha": "7f6e6743f93e5fc1889a124b3d3a483208c5beea",
+      "used_for": "operator stages, strict failure boundary, evolution plan/verify/apply and rollback semantics"
+    },
+    {
+      "path": "aria.cmd",
+      "blob_sha": "788c595b49f39958a4aad843fd71d718e6b386fa",
+      "used_for": "PowerShell 5.1 compatible entry contract"
+    }
+  ],
+  "authority": "reference semantics only; PulseFlow executes through its local verifier",
+  "promotion_rule": "candidate is promoted only after all declared PulseFlow verification gates pass"
+}

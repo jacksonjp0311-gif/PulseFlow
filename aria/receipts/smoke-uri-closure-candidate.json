@@ -1,0 +1,28 @@
+{
+  "schema": "aria.pulseflow.repair-receipt.v1",
+  "candidate_version": "0.2.4",
+  "timestamp_utc": "2026-07-27T14:00:00Z",
+  "wound": "Windows PowerShell 5.1 bound the query suffix in an expandable string to the dynamic session variable, producing an undefined variable named Baseline?limit before the HTTP request was issued.",
+  "observed_closure": {
+    "cargo_check": "PASS",
+    "cargo_test": "PASS (16 integration and contract tests)",
+    "release_build": "PASS",
+    "live_smoke": "FRACTURE at dynamic URI construction after health and core API actions passed"
+  },
+  "changed_paths": [
+    "scripts/ARIA-Smoke.ps1",
+    "scripts/ARIA-Verify.ps1",
+    "scripts/ARIA-Handshake.ps1",
+    "scripts/ARIA-Static.py",
+    "schemas/powershell-runtime.contract.json",
+    "aria/ARIA-CONNECT.json",
+    "aria/pulseflow.aria",
+    "aria/README.md",
+    "Cargo.toml",
+    "README.md",
+    "BUILD-STATUS.md",
+    "MANIFEST.json"
+  ],
+  "repair": "Verify content-addressed package identity, replace interpolated query URLs with structured path/query construction, add PS5 semantic scanning, deterministic handshake, and verification receipts.",
+  "authority": "candidate only until the target host completes scripts/PulseFlow-All-One.ps1 -Mode Verify"
+}
