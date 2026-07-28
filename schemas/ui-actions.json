@@ -50,6 +50,12 @@
       "route": "/api/interlink/enable"
     },
     {
+      "id": "interlink-mesh",
+      "kind": "http",
+      "method": "POST",
+      "route": "/api/interlink/mesh"
+    },
+    {
       "id": "interlink-disconnect",
       "kind": "http",
       "method": "POST",

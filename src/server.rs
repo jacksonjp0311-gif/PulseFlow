@@ -456,15 +456,18 @@ fn dispatch(
             let mut locked = state.write().map_err(|_| "state lock poisoned")?;
             let prior = locked.target_pid;
             let previous = locked.authority_state;
-            if !matches!(
-                previous,
-                AuthorityState::Connected
-                    | AuthorityState::Verified
-                    | AuthorityState::Active
-                    | AuthorityState::Paused
-                    | AuthorityState::Faulted
-            ) {
-                return Err("disconnect requires an existing target or authority link".into());
+            let mesh_was_on = locked.mesh_mode;
+            if !mesh_was_on
+                && !matches!(
+                    previous,
+                    AuthorityState::Connected
+                        | AuthorityState::Verified
+                        | AuthorityState::Active
+                        | AuthorityState::Paused
+                        | AuthorityState::Faulted
+                )
+            {
+                return Err("disconnect requires an existing target, mesh, or authority link".into());
             }
             let receipt_target = locked.target_identity.clone();
             let resulting = transition(previous, AuthorityAction::Disconnect)?;
@@ -472,6 +475,9 @@ fn dispatch(
             locked.target_label = "system-monitor".into();
             locked.target_identity = None;
             locked.target_revision = locked.target_revision.saturating_add(1);
+            locked.mesh_mode = false;
+            locked.mesh_note = String::new();
+            locked.mesh_targets = 0;
             locked.governor_active = false;
             locked.authority_state = resulting;
             locked.last_valid_authority_state = AuthorityState::Observation;
@@ -483,7 +489,7 @@ fn dispatch(
             let event = locked.push_event(
                 "interlink",
                 format!(
-                    "Process link disconnected from {:?}; system observation remains live.",
+                    "Process/mesh link disconnected from {:?}; system observation remains live.",
                     prior
                 ),
             );
@@ -557,6 +563,9 @@ fn dispatch(
                 AuthorityAction::Enable
             };
             let resulting = transition(previous, action)?;
+            locked.mesh_mode = false;
+            locked.mesh_note = String::new();
+            locked.mesh_targets = 0;
             locked.governor_active = true;
             locked.authority_state = resulting;
             locked.last_valid_authority_state = resulting;
@@ -593,6 +602,60 @@ fn dispatch(
                 200,
                 &json!({
                     "session_id": locked.session_id,
+                    "verification": interlink_report(&locked)
+                }),
+            )
+        }
+        ("POST", "/api/interlink/mesh") => {
+            // Whole-system Pulse Mesh: no single-PID attach required.
+            // Host telemetry drives Eco; top pressure processes receive bounded QoS.
+            let mut locked = state.write().map_err(|_| "state lock poisoned")?;
+            if !locked.governor_supported {
+                return Err("Pulse Mesh process QoS requires Windows".into());
+            }
+            let previous = locked.authority_state;
+            locked.mesh_mode = true;
+            locked.mesh_note = "Pulse Mesh armed for whole-system host pressure.".into();
+            locked.mesh_targets = 0;
+            locked.target_pid = None;
+            locked.target_label = "pulse-mesh".into();
+            locked.target_identity = None;
+            locked.governor_active = true;
+            locked.authority_state = AuthorityState::Active;
+            locked.last_valid_authority_state = AuthorityState::Active;
+            locked.failed_invariant = None;
+            locked.recording = true;
+            locked.target_revision = locked.target_revision.saturating_add(1);
+            let session_event = locked.begin_new_session();
+            persist_event(config, &session_event);
+            let event = locked.push_event(
+                "interlink",
+                "Pulse Mesh enabled: whole-system observation + bounded multi-process Eco under host pressure.",
+            );
+            persist_event(config, &event);
+            let receipt = make_receipt(
+                &locked,
+                config,
+                "MESH_ENABLE",
+                previous,
+                AuthorityState::Active,
+                vec![
+                    "mesh_mode".into(),
+                    "no_single_pid_required".into(),
+                    "host_pressure_drives_qos".into(),
+                    "top_process_eco_bounded".into(),
+                ],
+                "MESH_ARMED",
+                true,
+                None,
+            );
+            let receipt_event = locked.push_receipt(receipt);
+            persist_event(config, &receipt_event);
+            Response::json(
+                200,
+                &json!({
+                    "session_id": locked.session_id,
+                    "mesh_mode": true,
                     "verification": interlink_report(&locked)
                 }),
             )
@@ -1105,11 +1168,14 @@ fn interlink_report(state: &RuntimeState) -> serde_json::Value {
         .verification_receipt
         .as_ref()
         .is_some_and(|receipt| now.saturating_sub(receipt.timestamp_ms) <= 300_000);
+    // Mesh is host-scoped: armed Active counts as live process channel even while QoS is MonitorOnly.
+    // Single-PID path still requires applied Eco/Thermal + live verified target.
     let process_qos_active = state.authority_state == AuthorityState::Active
         && state.governor_active
-        && state.control.applied_qos != QosLevel::MonitorOnly
-        && target_alive
-        && verification_fresh;
+        && (state.mesh_mode
+            || (state.control.applied_qos != QosLevel::MonitorOnly
+                && target_alive
+                && verification_fresh));
     let agent_channel_live = state.agent_bound && state.telemetry.io_signal_fresh;
     let contract = state.authority_contract();
     let state_label = match state.authority_state {
@@ -1122,6 +1188,13 @@ fn interlink_report(state: &RuntimeState) -> serde_json::Value {
         AuthorityState::Paused => "paused",
         AuthorityState::Faulted => "faulted",
         AuthorityState::Disconnected => "disconnected",
+    };
+    let authority_scope = if state.mesh_mode {
+        "host-mesh"
+    } else if state.target_pid.is_some() {
+        "process-scoped"
+    } else {
+        "observation-only"
     };
     json!({
         "schema_version": "pulseflow.interlink-verification.v1",
@@ -1139,6 +1212,9 @@ fn interlink_report(state: &RuntimeState) -> serde_json::Value {
         "verification_fresh": verification_fresh,
         "governor_supported": state.governor_supported,
         "governor_armed": state.governor_active,
+        "mesh_mode": state.mesh_mode,
+        "mesh_targets": state.mesh_targets,
+        "mesh_note": state.mesh_note,
         "requested_qos": state.control.requested_qos,
         "applied_qos": state.control.applied_qos,
         "process_qos_active": process_qos_active,
@@ -1149,7 +1225,7 @@ fn interlink_report(state: &RuntimeState) -> serde_json::Value {
             "process_qos": process_qos_active,
             "agent_adapter": agent_channel_live
         },
-        "authority": if state.target_pid.is_some() { "process-scoped" } else { "observation-only" },
+        "authority": authority_scope,
         "capacity_signal": state.control.capacity_signal,
         "control_authority": state.control.control_authority,
         "controller_effort": state.control.controller_effort,

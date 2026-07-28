@@ -5,7 +5,7 @@ use pulseflow_governor::{
     config::Config,
     controller::PulseController,
     futurist,
-    governor::{platform_governor_supported, ProcessGovernor},
+    governor::{self, platform_governor_supported, ProcessGovernor},
     model::{now_ms, ObservationFrame, QosLevel, RuntimeEvent, RuntimeState, RuntimeTuning},
     policy::{self, MemoryGuard},
     regime::RegimeArbiter,
@@ -211,6 +211,7 @@ fn run_control_loop(state: Arc<RwLock<RuntimeState>>, config: Config) {
                 locked.verification_receipt.as_ref().is_some_and(|receipt| {
                     now_ms().saturating_sub(receipt.timestamp_ms) <= 300_000
                 }),
+                locked.mesh_mode,
                 locked.session_id.clone(),
                 locked.experiment_id.clone(),
                 locked.epoch_revision,
@@ -233,6 +234,7 @@ fn run_control_loop(state: Arc<RwLock<RuntimeState>>, config: Config) {
             target_revision,
             authority_state,
             verification_fresh,
+            mesh_mode,
             session_id,
             experiment_id,
             epoch_revision,
@@ -289,10 +291,11 @@ fn run_control_loop(state: Arc<RwLock<RuntimeState>>, config: Config) {
         let sample = telemetry.sample(io, config.signal_stale_after_ms);
         let target_alive = requested_target_pid.is_none()
             || sample.process.as_ref().is_some_and(|process| process.alive);
+        // Single-process path requires verified Active + live PID.
+        // Pulse Mesh path governs host-wide without one PID attachment.
         let effective_active = active
             && authority_state == AuthorityState::Active
-            && target_alive
-            && verification_fresh;
+            && (mesh_mode || (target_alive && verification_fresh));
 
         // Refresh host profile periodically so weights track the live plant.
         profile_refresh_counter = profile_refresh_counter.saturating_add(1);
@@ -319,13 +322,29 @@ fn run_control_loop(state: Arc<RwLock<RuntimeState>>, config: Config) {
             config.governor.thermal_guard_c,
             config.governor.thermal_release_c,
         );
-        let apply = if effective_active {
+        let mut mesh_note = String::new();
+        let mut mesh_targets = 0u32;
+        let apply = if effective_active && mesh_mode {
+            // Whole-system mesh: Eco/ThermalProtect lands on top pressure processes.
+            let (count, note) = governor::apply_mesh_qos(control.requested_qos, 4);
+            mesh_targets = count;
+            mesh_note = note;
+            control.applied_qos = control.requested_qos;
+            // Synthetic apply result for logging.
+            pulseflow_governor::governor::ApplyResult {
+                changed: count > 0,
+                applied: control.requested_qos,
+                message: mesh_note.clone(),
+            }
+        } else if effective_active {
             governor.apply(control.requested_qos)
         } else {
             governor.apply(QosLevel::MonitorOnly)
         };
         control.applied_qos = apply.applied;
-        control.control_authority = if matches!(
+        control.control_authority = if mesh_mode && effective_active {
+            1.0
+        } else if matches!(
             authority_state,
             AuthorityState::Verified | AuthorityState::Active | AuthorityState::Paused
         ) {
@@ -333,7 +352,7 @@ fn run_control_loop(state: Arc<RwLock<RuntimeState>>, config: Config) {
         } else {
             0.0
         };
-        if apply.applied == QosLevel::MonitorOnly {
+        if apply.applied == QosLevel::MonitorOnly && !mesh_mode {
             control.controller_effort = 0.0;
             control.applied_modulation = 0.0;
             control.modulation = 0.0;
@@ -543,7 +562,10 @@ fn run_control_loop(state: Arc<RwLock<RuntimeState>>, config: Config) {
 
         let mut ledger_events: Vec<RuntimeEvent> = Vec::new();
         if let Ok(mut locked) = state.write() {
-            if locked.authority_state == AuthorityState::Active && !target_alive {
+            if locked.authority_state == AuthorityState::Active
+                && !locked.mesh_mode
+                && !target_alive
+            {
                 locked.governor_active = false;
                 locked.last_valid_authority_state = AuthorityState::Verified;
                 locked.authority_state = AuthorityState::Faulted;
@@ -552,7 +574,10 @@ fn run_control_loop(state: Arc<RwLock<RuntimeState>>, config: Config) {
                     "authority_fault",
                     "Target process exited; governance stopped and observation remains live.",
                 ));
-            } else if locked.authority_state == AuthorityState::Active && !verification_fresh {
+            } else if locked.authority_state == AuthorityState::Active
+                && !locked.mesh_mode
+                && !verification_fresh
+            {
                 locked.governor_active = false;
                 locked.last_valid_authority_state = AuthorityState::Connected;
                 locked.authority_state = AuthorityState::Faulted;
@@ -561,6 +586,10 @@ fn run_control_loop(state: Arc<RwLock<RuntimeState>>, config: Config) {
                     "authority_fault",
                     "Verification expired; governance stopped pending rediscovery and verification.",
                 ));
+            }
+            if mesh_mode {
+                locked.mesh_note = mesh_note.clone();
+                locked.mesh_targets = mesh_targets;
             }
             locked.telemetry = sample;
             locked.control = control;

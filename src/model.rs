@@ -826,6 +826,14 @@ pub struct RuntimeState {
     pub agent_bound: bool,
     pub governor_active: bool,
     pub governor_supported: bool,
+    /// Whole-system Pulse Mesh: host-scoped modulation without a single PID.
+    #[serde(default)]
+    pub mesh_mode: bool,
+    /// Last mesh apply note for the operator HUD.
+    #[serde(default)]
+    pub mesh_note: String,
+    #[serde(default)]
+    pub mesh_targets: u32,
     pub recording: bool,
     pub experiment_id: String,
     pub epoch_revision: u64,
@@ -898,6 +906,9 @@ impl RuntimeState {
             agent_bound: false,
             governor_active: active,
             governor_supported,
+            mesh_mode: false,
+            mesh_note: String::new(),
+            mesh_targets: 0,
             recording: true,
             experiment_id,
             epoch_revision: 1,

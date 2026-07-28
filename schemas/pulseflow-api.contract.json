@@ -40,6 +40,11 @@
     },
     {
       "method": "POST",
+      "path": "/api/interlink/mesh",
+      "purpose": "Enable whole-system Pulse Mesh without a single process attach; host pressure drives Eco on top user processes."
+    },
+    {
+      "method": "POST",
       "path": "/api/interlink/disconnect",
       "purpose": "Remove process authority while preserving host telemetry and recording."
     },

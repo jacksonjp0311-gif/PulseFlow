@@ -10,7 +10,7 @@ pub struct ProcessGovernor {
     last_change_ms: u128,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ApplyResult {
     pub changed: bool,
     pub applied: QosLevel,
@@ -175,4 +175,89 @@ fn apply_platform_qos(pid: u32, level: QosLevel) -> Result<(), String> {
 #[cfg(not(target_os = "windows"))]
 fn apply_platform_qos(_pid: u32, _level: QosLevel) -> Result<(), String> {
     Err("active process QoS modulation is currently implemented only on Windows".into())
+}
+
+/// Apply QoS to an arbitrary PID (used by whole-system Pulse Mesh).
+pub fn apply_qos_to_pid(pid: u32, level: QosLevel) -> Result<(), String> {
+    apply_platform_qos(pid, level)
+}
+
+/// Select top user processes by combined CPU+memory pressure for mesh Eco.
+/// Excludes the PulseFlow process and common critical system names.
+pub fn select_mesh_targets(max_targets: usize) -> Vec<(u32, String, f64)> {
+    use sysinfo::{PidExt, ProcessExt, System, SystemExt};
+    let mut system = System::new();
+    system.refresh_processes();
+    let self_pid = std::process::id();
+    let blocked = [
+        "system",
+        "registry",
+        "smss.exe",
+        "csrss.exe",
+        "wininit.exe",
+        "services.exe",
+        "lsass.exe",
+        "svchost.exe",
+        "fontdrvhost.exe",
+        "dwm.exe",
+        "memory compression",
+        "secure system",
+    ];
+    let mut scored: Vec<(u32, String, f64)> = system
+        .processes()
+        .iter()
+        .filter_map(|(pid, process)| {
+            let id = pid.as_u32();
+            if id == 0 || id == self_pid {
+                return None;
+            }
+            let name = process.name().to_string();
+            let lower = name.to_ascii_lowercase();
+            if blocked.iter().any(|item| lower.contains(item)) {
+                return None;
+            }
+            let cpu = process.cpu_usage() as f64;
+            // sysinfo reports process memory in bytes on this platform.
+            let mem_mb = process.memory() as f64 / 1024.0 / 1024.0;
+            // Prefer memory hogs with some CPU activity (desktop mesh).
+            let score = mem_mb * 0.65 + cpu * 8.0;
+            if score < 80.0 {
+                return None;
+            }
+            Some((id, name, score))
+        })
+        .collect();
+    scored.sort_by(|a, b| b.2.partial_cmp(&a.2).unwrap_or(std::cmp::Ordering::Equal));
+    scored.truncate(max_targets.max(1));
+    scored
+}
+
+/// Apply a mesh QoS level to selected host processes. Returns applied count + note.
+pub fn apply_mesh_qos(level: QosLevel, max_targets: usize) -> (u32, String) {
+    if !platform_governor_supported() {
+        return (0, "Mesh QoS requires Windows.".into());
+    }
+    if matches!(level, QosLevel::MonitorOnly) {
+        return (0, "Mesh is observing only.".into());
+    }
+    let targets = select_mesh_targets(max_targets);
+    if targets.is_empty() {
+        return (0, "No mesh targets above the pressure score floor.".into());
+    }
+    let mut ok = 0u32;
+    let mut names = Vec::new();
+    for (pid, name, _) in &targets {
+        if apply_platform_qos(*pid, level).is_ok() {
+            ok = ok.saturating_add(1);
+            names.push(format!("{name}#{pid}"));
+        }
+    }
+    (
+        ok,
+        format!(
+            "Pulse mesh applied {level:?} to {ok}/{} targets: {}",
+            targets.len(),
+            names.join(", ")
+        ),
+    )
 }

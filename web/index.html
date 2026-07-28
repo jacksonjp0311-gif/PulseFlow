@@ -105,7 +105,7 @@
     .view.active { display: block; }
     .modulation-view { position: relative; height: 100%; background-image: linear-gradient(rgba(0,0,0,.025) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,.025) 1px, transparent 1px); background-size: 28px 28px; }
     .modulation-view::before { content: ""; position: absolute; inset: 5% 8%; border: 1px dashed #c9c5bd; border-radius: 50%; }
-    .status-block { position: absolute; z-index: 5; top: 10px; left: 12px; font-size: 13px; line-height: 1.45; letter-spacing: .06em; text-transform: uppercase; width: min(300px, 38%); }
+    .status-block { position: absolute; z-index: 5; top: 10px; left: 12px; font-size: 13px; line-height: 1.45; letter-spacing: .06em; text-transform: uppercase; width: min(340px, 42%); }
     .clock-block { position: absolute; z-index: 5; top: 10px; right: 12px; text-align: right; font-size: 13px; line-height: 1.45; letter-spacing: .06em; text-transform: uppercase; width: min(300px, 38%); }
     .hud-grid {
       display: grid;
@@ -130,7 +130,17 @@
     .hud-chip.regime b { color: #6eb6ff; }
     .hud-title-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 13px; letter-spacing: .1em; }
     .hud-title-row strong { color: var(--accent); font-size: 14px; }
-    .coherence-scope-card { top: 118px !important; }
+    .status-block .o-coherence {
+      margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--soft-line);
+    }
+    .status-block .o-coherence .scope-head {
+      display: flex; justify-content: space-between; font-size: 12px; letter-spacing: .09em; margin-bottom: 2px;
+    }
+    .status-block #coherence-scope { width: 100%; height: 42px; display: block; margin: 2px 0; }
+    .status-block .scope-legend { display: flex; gap: 10px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+    .status-block .scope-legend i { display: inline-block; width: 8px; height: 3px; margin-right: 3px; vertical-align: middle; }
+    .status-block .scope-legend i.raw { background: #9fb2a8; }
+    .status-block .scope-legend i.filtered { background: var(--accent); }
     .accent { color: var(--accent); font-weight: 700; }
     .core-wrap { position: absolute; inset: 75px 20px 35px; }
     .orbit { position: absolute; left: 50%; top: 51%; transform: translate(-50%, -50%); border: 1px solid #bdb9b1; border-radius: 50%; }
@@ -382,7 +392,6 @@
     .interlink-grid b, .receipt-line b { font-size: 13px; letter-spacing: .04em; text-align: right; color: var(--ink); }
     #interlink-detail { font-size: 14px; line-height: 1.45; margin: 8px 0; color: var(--muted); }
     .receipt-line { display:flex;justify-content:space-between;gap:8px;padding-top:7px;border-top:1px dotted rgba(22,66,42,.25); }
-    .coherence-scope-card { position: absolute; z-index: 6; left: 50%; top: 12px; transform: translateX(-50%); width: min(460px, 40%); padding: 10px 13px; border: 1px solid var(--soft-line); border-radius: 9px; background: rgba(16,16,16,.92); box-shadow: 0 8px 22px rgba(0,0,0,.4); backdrop-filter: blur(10px); color: var(--ink); }
     .scope-head { display: flex; justify-content: space-between; font-size: 13px; letter-spacing: .09em; text-transform: uppercase; color: var(--ink); }
     #coherence-scope { width:100%;height:38px;display:block;margin:3px 0; }
     .scope-legend { display: flex; gap: 13px; align-items: center; font-size: 12px; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
@@ -749,6 +758,11 @@
             <div class="hud-chip zone-adm" id="gcmt-zone-chip"><span>Envelope</span><b id="gcmt-zone">ADM</b></div>
             <div class="hud-chip"><span>Cont. debt D</span><b id="gcmt-debt">0.00</b></div>
           </div>
+          <div class="o-coherence" title="Oscillation coherence measures how consistently the observed workload follows the governor's filtered control trajectory. Stability can remain high while coherence is moderate when disturbances are bounded but irregular.">
+            <div class="scope-head"><span>Oscillation coherence ⓘ</span><b id="coherence-damping">--%</b></div>
+            <canvas id="coherence-scope" aria-label="Raw and filtered stress comparison"></canvas>
+            <div class="scope-legend"><span><i class="raw"></i>Raw drift</span><span><i class="filtered"></i>Filtered flow</span><span id="coherence-mode">OBSERVE</span></div>
+          </div>
         </div>
         <div class="clock-block hud-card">
           <div class="hud-title-row" style="flex-direction:row-reverse"><span>Arbiter · E/C-plane</span><strong id="gcmt-regime">M_L</strong></div>
@@ -764,11 +778,6 @@
             <div class="hud-chip"><span>λ lock</span><b id="gcmt-lambda">—</b></div>
             <div class="hud-chip"><span>Switch cost</span><b id="gcmt-switch">HOLD</b></div>
           </div>
-        </div>
-        <div class="coherence-scope-card">
-          <div class="scope-head" title="Oscillation coherence measures how consistently the observed workload follows the governor’s filtered control trajectory. Stability can remain high while coherence is moderate when disturbances are bounded but irregular."><span>Oscillation coherence ⓘ</span><b id="coherence-damping">--%</b></div>
-          <canvas id="coherence-scope" aria-label="Raw and filtered stress comparison"></canvas>
-          <div class="scope-legend"><span><i class="raw"></i>Raw drift</span><span><i class="filtered"></i>Filtered flow</span><span id="coherence-mode">OBSERVE</span></div>
         </div>
         <div class="core-wrap" id="core-stage" data-state="observe" data-mode="idle">
           <div class="heat-soft-field" id="heat-soft-field" aria-hidden="true"></div>
@@ -952,7 +961,7 @@
             <div class="pairing-label"><span>Discover → Connect → Verify → Enable</span><b id="pairing-protocol">LOCAL</b></div>
             <div class="process-row"><select id="process-select" aria-label="Process to connect"><option value="">Discovering processes…</option></select><button class="btn" data-action="interlink-process-refresh">Discover</button></div>
             <div class="pairing-detail" id="process-detail">Choose the workload responsible for the CPU or GPU activity you want to test.</div>
-            <div class="pairing-actions"><button class="btn" data-action="interlink-connect">Connect System</button><button class="btn" data-action="interlink-baseline">Capture Baseline</button><button class="btn enable" data-action="interlink-enable">Enable PulseFlow</button><button class="btn" data-action="interlink-disconnect">Disconnect</button><button class="btn" data-action="system-link-verify">Verify Link</button></div>
+            <div class="pairing-actions"><button class="btn" data-action="interlink-connect">Connect System</button><button class="btn" data-action="interlink-baseline">Capture Baseline</button><button class="btn enable" data-action="interlink-enable">Enable PulseFlow</button><button class="btn primary" data-action="interlink-mesh" title="Whole-system mesh: host pressure drives Eco on top processes. No single-app attach required.">Enable Pulse Mesh</button><button class="btn" data-action="interlink-disconnect">Disconnect</button><button class="btn" data-action="system-link-verify">Verify Link</button></div>
           </div>
           <p id="interlink-detail">Waiting for a backend state attestation.</p>
           <div class="receipt-line"><span>Verification evidence</span><b id="link-receipt">NONE</b></div>
@@ -1072,6 +1081,7 @@
     "interlink-connect": connectSelectedProcess,
     "interlink-baseline": captureBaseline,
     "interlink-enable": enablePulseFlow,
+    "interlink-mesh": enablePulseMesh,
     "interlink-disconnect": disconnectInterlink,
     "mode-quiet": () => postMode("quiet"),
     "mode-balanced": () => postMode("balanced"),
@@ -1124,7 +1134,8 @@
     const stress = clamp(control.filtered_stress || 0, 0, 1);
     const effort = clamp(control.applied_modulation || 0, 0, 1);
     const auth = clamp(control.control_authority || 0, 0, 1);
-    const governed = !!(status.governor_active && ((systemLink && systemLink.state === "active") || auth >= 0.9));
+    const mesh = !!status.mesh_mode;
+    const governed = !!(status.governor_active && (mesh || (systemLink && systemLink.state === "active") || auth >= 0.9));
     const load = clamp(0.35 * cpu + 0.3 * ram + 0.15 * gpuU + 0.1 * queue + 0.1 * stress, 0, 1);
     const busy = load > 0.18 || stress > 0.25 || cpu > 0.2;
 
@@ -1151,7 +1162,8 @@
 
     let mode = "idle";
     let label = "RUNTIME IDLE";
-    if (governed) { mode = "governed"; label = "PULSEFLOW ENGAGED"; }
+    if (mesh && governed) { mode = "governed"; label = "PULSE MESH · WHOLE SYSTEM"; }
+    else if (governed) { mode = "governed"; label = "PULSEFLOW ENGAGED"; }
     else if (busy) { mode = "load"; label = "HOST LOAD RUNNING"; }
     core.dataset.mode = mode;
     const pill = $("#runtime-mode-pill");
@@ -1313,19 +1325,38 @@
 
   function deriveSystemLink(status) {
     if (!App.connected || !status) return {state:"fracture", label:"LINK FRACTURE", api:"DOWN", telemetry:"STALE", target:"UNKNOWN", governor:"OFFLINE", processChannel:"OFF", agentChannel:"WAIT", detail:"The dashboard cannot attest the PulseFlow backend.", receipt:"NO BACKEND"};
+    const meshMode = Boolean(status.mesh_mode || (App.interlinkReport && App.interlinkReport.mesh_mode));
+    const meshTargets = Number((App.interlinkReport && App.interlinkReport.mesh_targets) || status.mesh_targets || 0);
+    const meshNote = String((App.interlinkReport && App.interlinkReport.mesh_note) || status.mesh_note || "").trim();
     const report = App.interlinkReport;
     if (report && report.api_connected) {
       const stateMap = {active:"active", activating:"armed", verified:"armed", connected:"connected", discovered:"discovered", paused:"paused", observation:"observe", disconnected:"observe", faulted:"fracture"};
-      const state = stateMap[report.state] || "fracture";
-      const label = state === "active" ? "VERIFIED ACTIVE" : state === "paused" ? "VERIFIED PAUSED" : state === "armed" ? "VERIFIED CONNECTED" : state === "connected" ? "CONNECTED · VERIFY REQUIRED" : state === "discovered" ? "TARGET DISCOVERED" : state === "observe" ? "OBSERVATION LINK" : "AUTHORITY FAULT";
-      const target = report.target_pid != null ? `PID ${report.target_pid}` : "UNBOUND";
+      let state = stateMap[report.state] || "fracture";
+      // Mesh is whole-system: treat armed Active as live even before Eco actuates.
+      if (meshMode && (report.authority_state === "active" || report.state === "active" || report.state === "activating")) {
+        state = "active";
+      }
+      const label = meshMode && state === "active"
+        ? "PULSE MESH ACTIVE"
+        : state === "active" ? "VERIFIED ACTIVE"
+        : state === "paused" ? "VERIFIED PAUSED"
+        : state === "armed" ? "VERIFIED CONNECTED"
+        : state === "connected" ? "CONNECTED · VERIFY REQUIRED"
+        : state === "discovered" ? "TARGET DISCOVERED"
+        : state === "observe" ? "OBSERVATION LINK"
+        : "AUTHORITY FAULT";
+      const target = meshMode
+        ? (meshTargets > 0 ? `MESH · ${meshTargets} targets` : "MESH · WHOLE SYSTEM")
+        : report.target_pid != null ? `PID ${report.target_pid}` : "UNBOUND";
       const governor = state === "active" ? String(report.applied_qos || "active").replaceAll("_"," ").toUpperCase() : state === "paused" ? "PAUSED" : state === "armed" ? "READY" : state === "connected" ? "WAIT" : state === "observe" || state === "discovered" ? "MONITOR ONLY" : "FAULT";
-      const processChannel = report.channels && report.channels.process_qos ? "ACTIVE" : (state === "armed" || state === "paused") ? "READY" : "OFF";
+      const processChannel = meshMode && state === "active" ? "MESH" : report.channels && report.channels.process_qos ? "ACTIVE" : (state === "armed" || state === "paused") ? "READY" : "OFF";
       const agentChannel = report.channels && report.channels.agent_adapter ? "LIVE" : "WAIT";
-      const detail = state === "active"
+      const detail = meshMode && state === "active"
+        ? (meshNote || "Pulse Mesh: host pressure drives Eco on top user processes. No single-app attach. Critical system processes are excluded.")
+        : state === "active"
         ? "Host telemetry, target identity, Windows process QoS, and applied control evidence are verified. Agent binding remains an independent explicit contract."
         : state === "armed"
-          ? "The workload is connected and verified. Capture a baseline or enable PulseFlow to begin a separate governed session."
+          ? "The workload is connected and verified. Capture a baseline or enable PulseFlow to begin a separate governed session. Or use Pulse Mesh for whole-system Eco."
           : state === "connected"
             ? "The target identity is captured. Verify the link before baseline capture or governance."
           : state === "paused"
@@ -1333,7 +1364,7 @@
           : state === "discovered"
             ? "A controllable target was discovered. Connect it to capture and attest its executable identity."
           : state === "observe"
-            ? "System-wide telemetry and recording are live. Discover and connect the workload process to grant process-scoped modulation authority."
+            ? "System-wide telemetry and recording are live. Enable Pulse Mesh for whole-system Eco, or discover a single process for attach-and-verify governance."
             : "The target, telemetry, or governor invariant failed. Disconnect and rediscover the workload.";
       return {state,label,api:"PASS",telemetry:report.telemetry_live?"LIVE":"ACQUIRING",target,governor,processChannel,agentChannel,detail,receipt:String(report.verification_id || "NO RECEIPT").slice(-28).toUpperCase()};
     }
@@ -1350,10 +1381,24 @@
     const applied = String((status.control || {}).applied_qos || "monitor_only");
     const event = [...(status.events || [])].reverse().find(item => ["qos","control","interlink","boot"].includes(String(item.kind)));
     const receipt = event ? `${String(event.kind).toUpperCase()} · ${new Date(Number(event.timestamp_ms)).toLocaleTimeString()}` : "NO CONTROL EVENT";
+    if (meshMode && supported && active) {
+      return {
+        state: "active",
+        label: "PULSE MESH ACTIVE",
+        api: "PASS",
+        telemetry: telemetryFresh ? "LIVE" : "DELAYED",
+        target: meshTargets > 0 ? `MESH · ${meshTargets} targets` : "MESH · WHOLE SYSTEM",
+        governor: applied.replaceAll("_", " ").toUpperCase(),
+        processChannel: "MESH",
+        agentChannel: telemetry.io_signal_fresh ? "LIVE" : "WAIT",
+        detail: meshNote || "Pulse Mesh: host pressure drives Eco on top user processes. No single-app attach.",
+        receipt
+      };
+    }
     if (targetBound && (!processAlive || !supported)) return {state:"fracture",label:"LINK FRACTURE",api:"PASS",telemetry:telemetryFresh?"LIVE":"STALE",target:processAlive?`PID ${status.target_pid}`:"TARGET DEAD",governor:supported?"SUPPORTED":"UNSUPPORTED",processChannel:"OFF",agentChannel:telemetry.io_signal_fresh?"LIVE":"WAIT",detail:!processAlive?"The declared target process is no longer alive.":"This host does not expose the Windows process governor.",receipt};
     if (targetBound && processAlive && supported && active && applied !== "monitor_only") return {state:"active",label:"VERIFIED ACTIVE",api:"PASS",telemetry:telemetryFresh?"LIVE":"DELAYED",target:`PID ${status.target_pid}`,governor:applied.replaceAll("_"," ").toUpperCase(),processChannel:"ACTIVE",agentChannel:telemetry.io_signal_fresh?"LIVE":"WAIT",detail:"Backend, telemetry, target identity, governor authority, and applied QoS are interlinked.",receipt};
     if (targetBound && processAlive && supported) return {state:"armed",label:"VERIFIED CONNECTED",api:"PASS",telemetry:telemetryFresh?"LIVE":"DELAYED",target:`PID ${status.target_pid}`,governor:"READY",processChannel:"READY",agentChannel:telemetry.io_signal_fresh?"LIVE":"WAIT",detail:"The target and Windows governor are verified. Capture a baseline or enable PulseFlow.",receipt};
-    return {state:"observe",label:"OBSERVATION LINK",api:"PASS",telemetry:telemetryFresh?"LIVE":"ACQUIRING",target:"UNBOUND",governor:"MONITOR ONLY",processChannel:"OFF",agentChannel:telemetry.io_signal_fresh?"LIVE":"WAIT",detail:"PulseFlow is integrated for system-wide telemetry and recording. Discover a workload process to begin causal testing.",receipt};
+    return {state:"observe",label:"OBSERVATION LINK",api:"PASS",telemetry:telemetryFresh?"LIVE":"ACQUIRING",target:"UNBOUND",governor:"MONITOR ONLY",processChannel:"OFF",agentChannel:telemetry.io_signal_fresh?"LIVE":"WAIT",detail:"PulseFlow is integrated for system-wide telemetry and recording. Enable Pulse Mesh for whole-system Eco, or discover a workload process for single-app governance.",receipt};
   }
 
   function renderSystemLink(status) {
@@ -1380,8 +1425,10 @@
     setAction("interlink-connect", state === "discovered", "Connect System");
     setAction("system-link-verify", state === "connected", ["verified","active","paused"].includes(state) ? "Verified" : "Verify Link");
     setAction("interlink-baseline", state === "verified" || state === "paused", "Capture Baseline");
-    setAction("interlink-enable", state === "verified" || state === "paused", state === "paused" ? "Resume Governor" : state === "active" ? "PulseFlow Active" : "Enable PulseFlow");
-    setAction("interlink-disconnect", ["connected","verified","active","paused","faulted"].includes(state), "Disconnect");
+    setAction("interlink-enable", state === "verified" || state === "paused", state === "paused" ? "Resume Governor" : state === "active" && !App.status?.mesh_mode ? "PulseFlow Active" : "Enable PulseFlow");
+    const meshOn = Boolean(App.status && App.status.mesh_mode);
+    setAction("interlink-mesh", !meshOn || state !== "active", meshOn && state === "active" ? "Pulse Mesh Active" : "Enable Pulse Mesh");
+    setAction("interlink-disconnect", ["connected","verified","active","paused","faulted"].includes(state) || meshOn, "Disconnect");
     setAction("control-start", state === "paused", state === "paused" ? "▶ Resume" : "▶ Start");
     setAction("control-pause", state === "active", state === "active" ? "Ⅱ Suspend Governor" : "Ⅱ Pause");
   }
@@ -1447,6 +1494,15 @@
     await Promise.allSettled([pollStatus(), loadHistory(), loadSessions()]);
     setTimeout(() => pollStatus().catch(console.error), 1300);
     toast(`PulseFlow enabled. Governed session ${result.session_id} started.`);
+  }
+
+  async function enablePulseMesh() {
+    const result = await api("/api/interlink/mesh", {method:"POST", body:{}});
+    App.interlinkReport = result.verification;
+    App.history = [];
+    await Promise.allSettled([pollStatus(), loadHistory(), loadSessions()]);
+    setTimeout(() => pollStatus().catch(console.error), 1300);
+    toast(`Pulse Mesh on whole system. Session ${result.session_id}. Host pressure drives Eco on top processes.`);
   }
 
   async function disconnectInterlink() {
