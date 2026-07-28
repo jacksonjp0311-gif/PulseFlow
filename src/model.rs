@@ -215,11 +215,15 @@ pub struct ControlSnapshot {
     pub predicted_stress: f64,
     pub residue: f64,
     pub residue_memory: f64,
-    /// Backward-compatible alias for `applied_modulation`.
+    /// Backward-compatible alias for `controller_effort`.
     pub modulation: f64,
+    /// Bounded controller estimate of available workload headroom.
+    pub capacity_signal: f64,
     /// Fraction of the verified process-scoped control envelope that is authorized.
     pub control_authority: f64,
-    /// Normalized control effort confirmed for the current interval.
+    /// Normalized event-triggered controller effort for the current interval.
+    pub controller_effort: f64,
+    /// Backward-compatible alias for `controller_effort`.
     pub applied_modulation: f64,
     /// One-sample-ahead stress forecast from the bounded trend estimator.
     pub forecast_stress: f64,
@@ -258,6 +262,18 @@ pub struct RuntimeMetrics {
     pub forecast_trend_per_sample: f64,
     pub forecast_confidence: f64,
     pub forecast_pressure_risk: f64,
+    /// Sum of ΔV for V = 1/2(error²); negative values indicate aggregate contraction.
+    pub lyapunov_delta_total: f64,
+    /// Average decrement -ΔV across the rolling observation window.
+    pub lyapunov_decrement_mean: f64,
+    /// Fraction of intervals with ΔV < 0.
+    pub contraction_confidence: f64,
+    /// Fraction of near-neutral intervals within a bounded ΔV tolerance.
+    pub marginal_fraction: f64,
+    /// Applied QoS transitions normalized by elapsed minutes.
+    pub trigger_density_per_minute: f64,
+    /// Smallest observed time between applied QoS transitions.
+    pub minimum_inter_event_ms: Option<u64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -392,6 +408,14 @@ pub struct OutcomeFrame {
 pub struct ObservationFrame {
     pub schema_version: String,
     pub session_id: String,
+    #[serde(default)]
+    pub experiment_id: String,
+    #[serde(default)]
+    pub epoch_revision: u64,
+    #[serde(default)]
+    pub epoch_reason: String,
+    #[serde(default)]
+    pub tuning_revision: u64,
     pub sequence: u64,
     pub timestamp_ms: u128,
     pub workload: WorkloadFrame,
@@ -407,6 +431,10 @@ impl ObservationFrame {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         session_id: String,
+        experiment_id: String,
+        epoch_revision: u64,
+        epoch_reason: String,
+        tuning_revision: u64,
         sequence: u64,
         telemetry: Telemetry,
         control: ControlSnapshot,
@@ -422,8 +450,12 @@ impl ObservationFrame {
         let residue_value = control.residue;
         let _ = dt_seconds;
         Self {
-            schema_version: "pulseflow.observation.v2".into(),
+            schema_version: "pulseflow.observation.v3".into(),
             session_id,
+            experiment_id,
+            epoch_revision,
+            epoch_reason,
+            tuning_revision,
             sequence,
             timestamp_ms: telemetry.timestamp_ms,
             workload: WorkloadFrame {
@@ -708,6 +740,9 @@ pub struct RuntimeState {
     pub governor_active: bool,
     pub governor_supported: bool,
     pub recording: bool,
+    pub experiment_id: String,
+    pub epoch_revision: u64,
+    pub epoch_reason: String,
     pub session_id: String,
     pub session_started_at_ms: u128,
     pub session_samples: u64,
@@ -742,6 +777,7 @@ impl RuntimeState {
             AuthorityState::Observation
         };
         let session_id = make_session_id(&target_label);
+        let experiment_id = format!("exp-{}", now_ms());
         Self {
             app: "PulseFlow Governor".into(),
             version: env!("CARGO_PKG_VERSION").into(),
@@ -767,6 +803,9 @@ impl RuntimeState {
             governor_active: active,
             governor_supported,
             recording: true,
+            experiment_id,
+            epoch_revision: 1,
+            epoch_reason: "boot".into(),
             session_id,
             session_started_at_ms: now_ms(),
             session_samples: 0,
@@ -847,7 +886,14 @@ impl RuntimeState {
     }
 
     pub fn begin_new_session(&mut self) -> RuntimeEvent {
+        self.begin_new_epoch("manual_session")
+    }
+
+    pub fn begin_new_epoch(&mut self, reason: impl Into<String>) -> RuntimeEvent {
+        let reason = reason.into();
         self.session_id = make_session_id(&self.target_label);
+        self.epoch_revision = self.epoch_revision.saturating_add(1);
+        self.epoch_reason = reason.clone();
         self.session_started_at_ms = now_ms();
         self.session_samples = 0;
         self.session_bytes = 0;
@@ -859,8 +905,11 @@ impl RuntimeState {
         self.live_sequence = 0;
         self.reset_revision = self.reset_revision.saturating_add(1);
         self.push_event(
-            "session",
-            format!("New recording session {} started.", self.session_id),
+            "experiment_epoch",
+            format!(
+                "Epoch {} ({}) started as session {}.",
+                self.epoch_revision, reason, self.session_id
+            ),
         )
     }
 }
@@ -914,6 +963,16 @@ pub struct SessionSummary {
     pub dropped_samples: u64,
     pub target_label: String,
     pub sampling_interval_ms: Option<u64>,
+    pub modes: Vec<String>,
+    pub homogeneous_mode: bool,
+    pub experiment_id: String,
+    pub epoch_revision: u64,
+    pub lyapunov_delta_total: f64,
+    pub lyapunov_decrement_mean: f64,
+    pub contraction_confidence: f64,
+    pub marginal_fraction: f64,
+    pub trigger_density_per_minute: f64,
+    pub minimum_inter_event_ms: Option<u64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]

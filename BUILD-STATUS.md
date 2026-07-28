@@ -1,4 +1,4 @@
-# PulseFlow Governor 0.3.1 Build Status
+# PulseFlow Governor 0.4.0 Build Status
 
 ## Candidate scope
 

@@ -1,6 +1,6 @@
 # PulseFlow Interlink Pairing v1
 
-PulseFlow 0.3.1 adds a local pairing flow that behaves like a deliberate device connection without pretending that opening the dashboard grants control.
+PulseFlow 0.4.0 adds a local pairing flow that behaves like a deliberate device connection without pretending that opening the dashboard grants control.
 
 ```text
 discover -> select -> connect -> verify -> enable

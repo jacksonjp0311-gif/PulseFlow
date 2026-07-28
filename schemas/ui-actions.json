@@ -110,6 +110,12 @@
       "route": "/api/export/"
     },
     {
+      "id": "session-compact",
+      "kind": "http",
+      "method": "POST",
+      "route": "/api/session/compact"
+    },
+    {
       "id": "replay-load",
       "kind": "http",
       "method": "GET",

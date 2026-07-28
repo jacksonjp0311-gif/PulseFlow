@@ -77,9 +77,16 @@ struct InterlinkConnectInput {
     pid: u32,
 }
 
+#[derive(Debug, Deserialize)]
+struct CompactSessionInput {
+    session_id: String,
+    confirm_delete_raw: bool,
+}
+
 #[derive(Debug, Clone, Serialize)]
 struct ProcessCandidate {
     pid: u32,
+    parent_pid: Option<u32>,
     name: String,
     executable: String,
     cpu_percent: f64,
@@ -355,7 +362,7 @@ fn dispatch(
             locked.verification_receipt = None;
             locked.failed_invariant = None;
             locked.recording = true;
-            let session_event = locked.begin_new_session();
+            let session_event = locked.begin_new_epoch("baseline");
             persist_event(config, &session_event);
             let event = locked.push_event(
                 "interlink",
@@ -417,7 +424,7 @@ fn dispatch(
             locked.verification_receipt = None;
             locked.failed_invariant = None;
             locked.recording = true;
-            let session_event = locked.begin_new_session();
+            let session_event = locked.begin_new_epoch("governance_enabled");
             persist_event(config, &session_event);
             let event = locked.push_event(
                 "interlink",
@@ -555,7 +562,14 @@ fn dispatch(
             let input: ModeInput = serde_json::from_slice(request.body)
                 .map_err(|error| format!("invalid mode JSON: {error}"))?;
             let mut locked = state.write().map_err(|_| "state lock poisoned")?;
+            if locked.mode == input.mode {
+                return Response::json(200, &locked.mode);
+            }
             locked.mode = input.mode;
+            locked.recording = true;
+            let epoch_event =
+                locked.begin_new_epoch(format!("mode_{:?}", input.mode).to_lowercase());
+            persist_event(config, &epoch_event);
             let event =
                 locked.push_event("mode", format!("Operating mode set to {:?}.", input.mode));
             persist_event(config, &event);
@@ -596,7 +610,7 @@ fn dispatch(
                     )
                 }
                 "reset" => {
-                    let event = locked.begin_new_session();
+                    let event = locked.begin_new_epoch("operator_reset");
                     locked.recording = true;
                     event
                 }
@@ -647,7 +661,7 @@ fn dispatch(
         }
         ("POST", "/api/session/new") => {
             let mut locked = state.write().map_err(|_| "state lock poisoned")?;
-            let event = locked.begin_new_session();
+            let event = locked.begin_new_epoch("manual_session");
             locked.recording = true;
             persist_event(config, &event);
             Response::json(201, &json!({ "session_id": locked.session_id }))
@@ -657,7 +671,14 @@ fn dispatch(
             let input: StageInput = serde_json::from_slice(request.body)
                 .map_err(|error| format!("invalid learning-stage JSON: {error}"))?;
             let mut locked = state.write().map_err(|_| "state lock poisoned")?;
+            if locked.learning_stage == input.stage {
+                return Response::json(200, &locked.learning_stage);
+            }
             locked.learning_stage = input.stage;
+            locked.recording = true;
+            let epoch_event =
+                locked.begin_new_epoch(format!("learning_stage_{:?}", input.stage).to_lowercase());
+            persist_event(config, &epoch_event);
             let suffix = if input.stage == LearningStage::BoundedAdaptive
                 && !config.agent_policy.allow_bounded_adaptation
             {
@@ -679,9 +700,56 @@ fn dispatch(
             let mut locked = state.write().map_err(|_| "state lock poisoned")?;
             locked.tuning.apply_patch(patch);
             locked.tuning_revision = locked.tuning_revision.saturating_add(1);
+            locked.recording = true;
+            let tuning_revision = locked.tuning_revision;
+            let epoch_event = locked.begin_new_epoch(format!("tuning_revision_{tuning_revision}"));
+            persist_event(config, &epoch_event);
             let event = locked.push_event("tuning", "Bounded runtime controller tuning updated.");
             persist_event(config, &event);
             Response::json(200, &locked.tuning)
+        }
+        ("POST", "/api/session/compact") => {
+            validate_json_content_type(&request.headers)?;
+            let input: CompactSessionInput = serde_json::from_slice(request.body)
+                .map_err(|error| format!("invalid compaction JSON: {error}"))?;
+            if !input.confirm_delete_raw {
+                return Err("confirm_delete_raw must be true".into());
+            }
+            let current_session = state
+                .read()
+                .map_err(|_| "state lock poisoned")?
+                .session_id
+                .clone();
+            if input.session_id == current_session {
+                return Err(
+                    "The active session cannot be compacted. Start a new session first.".into(),
+                );
+            }
+            let frames = storage::read_session_frames(
+                &config.storage.directory,
+                &input.session_id,
+                usize::MAX,
+            )?;
+            if frames.is_empty() {
+                return Err(
+                    "Cannot compact a session with no validated observation frames.".into(),
+                );
+            }
+            let summary =
+                analytics::summarize_session(&input.session_id, &frames, config.analytics.epsilon);
+            let receipt =
+                storage::compact_session(&config.storage.directory, &input.session_id, summary)?;
+            if let Ok(mut locked) = state.write() {
+                let event = locked.push_event(
+                    "session_compacted",
+                    format!(
+                        "Session {} was analyzed; {} raw bytes were deleted after its receipt was persisted.",
+                        receipt.session_id, receipt.freed_bytes
+                    ),
+                );
+                persist_event(config, &event);
+            }
+            Response::json(200, &receipt)
         }
         ("POST", "/api/replay") => {
             validate_json_content_type(&request.headers)?;
@@ -814,6 +882,7 @@ fn list_processes() -> Vec<ProcessCandidate> {
             let pid = pid.as_u32();
             ProcessCandidate {
                 pid,
+                parent_pid: process.parent().map(|parent| parent.as_u32()),
                 name: process.name().to_string(),
                 executable: process.exe().to_string_lossy().to_string(),
                 cpu_percent: process.cpu_usage() as f64,
@@ -840,6 +909,7 @@ fn find_process(pid: u32) -> Option<ProcessCandidate> {
     let own_pid = std::process::id();
     Some(ProcessCandidate {
         pid,
+        parent_pid: process.parent().map(|parent| parent.as_u32()),
         name: process.name().to_string(),
         executable: process.exe().to_string_lossy().to_string(),
         cpu_percent: process.cpu_usage() as f64,
@@ -914,7 +984,9 @@ fn interlink_report(state: &RuntimeState) -> serde_json::Value {
             "agent_adapter": agent_channel_live
         },
         "authority": if state.target_pid.is_some() { "process-scoped" } else { "observation-only" },
+        "capacity_signal": state.control.capacity_signal,
         "control_authority": state.control.control_authority,
+        "controller_effort": state.control.controller_effort,
         "applied_modulation": state.control.applied_modulation,
         "failed_invariant": state.failed_invariant,
         "evidence": state.verification_receipt,

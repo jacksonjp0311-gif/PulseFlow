@@ -22,7 +22,7 @@ pub fn recommend(
     let residual_pressure = control.residue_memory.max(0.0).clamp(0.0, 1.0);
     let stability = metrics.flow_stability.clamp(0.0, 1.0);
 
-    let capacity = (control.modulation
+    let capacity = (control.capacity_signal
         * (1.0 - 0.55 * temperature_pressure)
         * (1.0 - 0.25 * queue_pressure)
         * (1.0 - 0.35 * memory_pressure)
@@ -44,8 +44,10 @@ pub fn recommend(
         || memory_constrained
         || control.filtered_stress > control.setpoint + 0.10
         || residual_pressure > 0.10;
-    let abundant =
-        !constrained && control.modulation >= 0.75 && stability >= 0.80 && queue_pressure < 0.50;
+    let abundant = !constrained
+        && control.capacity_signal >= 0.75
+        && stability >= 0.80
+        && queue_pressure < 0.50;
 
     let (model_route, allow_background, token_scale, retrieval_scale, reason) = if memory_critical {
         (
@@ -101,7 +103,7 @@ pub fn recommend(
     let directive_live = stage == LearningStage::AgentPolicy && enough_evidence;
 
     AgentDirective {
-        authority: control.modulation,
+        authority: control.capacity_signal,
         recommended_concurrency: if protect { 1 } else { concurrency },
         recommended_batch_size: if protect { minimum_batch } else { batch },
         allow_background_memory_work: allow_background,

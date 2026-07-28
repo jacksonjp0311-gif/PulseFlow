@@ -19,7 +19,7 @@ discover -> select -> connect -> verify -> enable
 
 ## Control scope
 
-PulseFlow 0.3.1 controls one selected Windows process at a time through process priority and EcoQoS. It observes the whole machine. It does not alter clocks, voltage, fan curves, firmware or GPU power limits.
+PulseFlow 0.4.0 controls one selected Windows process at a time through process priority and EcoQoS. It observes the whole machine. It does not alter clocks, voltage, fan curves, firmware or GPU power limits.
 
 A cooperating AI runtime can additionally use:
 

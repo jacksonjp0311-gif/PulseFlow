@@ -1,6 +1,6 @@
 use pulseflow_governor::{
-    model::ObservationFrame,
-    storage::{list_sessions, read_session_frames, FrameRecorder},
+    model::{ObservationFrame, SessionSummary},
+    storage::{compact_session, list_sessions, read_session_frames, FrameRecorder},
 };
 use std::{
     fs,
@@ -40,13 +40,47 @@ fn recorder_round_trips_jsonl_and_metadata() {
     let frames = read_session_frames(&directory, "unit-session", 10).expect("read frames");
     assert_eq!(frames.len(), 1);
     assert_eq!(frames[0].sequence, 1);
-    assert_eq!(frames[0].schema_version, "pulseflow.observation.v2");
+    assert_eq!(frames[0].schema_version, "pulseflow.observation.v3");
     assert_eq!(frames[0].controller.applied_modulation, 0.0);
 
     let sessions = list_sessions(&directory).expect("list sessions");
     assert_eq!(sessions.len(), 1);
     assert_eq!(sessions[0].samples, 1);
     assert!(sessions[0].bytes > 0);
+
+    fs::remove_dir_all(directory).ok();
+}
+
+#[test]
+fn compaction_preserves_receipt_before_deleting_raw_session() {
+    let directory = temp_directory();
+    let mut recorder =
+        FrameRecorder::open(&directory, "compact-session", "unit", 1).expect("open recorder");
+    let mut observation = frame();
+    observation.session_id = "compact-session".into();
+    recorder.append(&observation).expect("append frame");
+    recorder.finalize().expect("finalize");
+    drop(recorder);
+
+    let receipt = compact_session(
+        &directory,
+        "compact-session",
+        SessionSummary {
+            session_id: "compact-session".into(),
+            samples: 1,
+            ..SessionSummary::default()
+        },
+    )
+    .expect("compact session");
+
+    assert!(receipt.raw_deleted);
+    assert!(receipt.freed_bytes > 0);
+    assert!(!directory.join("compact-session.jsonl").exists());
+    assert!(!directory.join("compact-session.meta.json").exists());
+    assert!(directory
+        .join("analysis-receipts")
+        .join("compact-session.analysis.json")
+        .exists());
 
     fs::remove_dir_all(directory).ok();
 }

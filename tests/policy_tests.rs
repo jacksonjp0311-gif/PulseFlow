@@ -19,7 +19,9 @@ fn policy_config() -> AgentPolicyConfig {
 fn abundant_control() -> ControlSnapshot {
     ControlSnapshot {
         modulation: 0.90,
+        capacity_signal: 0.90,
         control_authority: 0.90,
+        controller_effort: 0.90,
         applied_modulation: 0.90,
         setpoint: 0.66,
         filtered_stress: 0.30,
@@ -88,4 +90,28 @@ fn critical_memory_pressure_serializes_agent_work() {
     assert_eq!(directive.recommended_batch_size, 1);
     assert!(!directive.allow_background_memory_work);
     assert_eq!(directive.token_budget_scale, 0.45);
+}
+
+#[test]
+fn workload_capacity_is_not_mistaken_for_controller_effort() {
+    let telemetry = Telemetry {
+        memory_percent: 60.0,
+        ..Telemetry::default()
+    };
+    let mut control = abundant_control();
+    control.controller_effort = 0.05;
+    control.applied_modulation = 0.05;
+    control.modulation = 0.05;
+
+    let directive = policy::recommend(
+        &telemetry,
+        &control,
+        &stable_metrics(),
+        LearningStage::AgentPolicy,
+        &policy_config(),
+    );
+
+    assert_eq!(directive.authority, 0.90);
+    assert_eq!(directive.model_route, "performance");
+    assert!(directive.recommended_concurrency > 1);
 }

@@ -1,4 +1,8 @@
-use crate::model::{now_ms, safe_session_id, ObservationFrame, RuntimeEvent, SessionInfo};
+use crate::model::{
+    now_ms, safe_session_id, stable_hash, ObservationFrame, RuntimeEvent, SessionInfo,
+    SessionSummary,
+};
+use serde::{Deserialize, Serialize};
 use std::{
     collections::VecDeque,
     fs::{self, File, OpenOptions},
@@ -11,6 +15,17 @@ pub struct FrameRecorder {
     session: SessionInfo,
     file: File,
     metadata_flush_every_samples: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SessionCompactionReceipt {
+    pub schema_version: String,
+    pub session_id: String,
+    pub compacted_at_ms: u128,
+    pub raw_checksum: String,
+    pub freed_bytes: u64,
+    pub raw_deleted: bool,
+    pub summary: SessionSummary,
 }
 
 impl FrameRecorder {
@@ -38,7 +53,7 @@ impl FrameRecorder {
             started_at_ms: now_ms(),
             last_sample_at_ms: 0,
             target_label: target_label.to_string(),
-            schema_version: "pulseflow.observation.v2".into(),
+            schema_version: "pulseflow.observation.v3".into(),
         };
         let mut recorder = Self {
             directory,
@@ -136,7 +151,7 @@ pub fn read_session_frames(
     let path = directory.as_ref().join(format!("{safe}.jsonl"));
     let file =
         File::open(&path).map_err(|error| format!("cannot open {}: {error}", path.display()))?;
-    let mut frames = VecDeque::with_capacity(limit.max(1));
+    let mut frames = VecDeque::with_capacity(limit.max(1).min(4_096));
     for (line_index, line) in BufReader::new(file).lines().enumerate() {
         let line = line.map_err(|error| error.to_string())?;
         if line.trim().is_empty() {
@@ -170,13 +185,20 @@ pub fn validate_and_migrate_frame(mut frame: ObservationFrame) -> Result<Observa
             // V1 used `modulation` as ambiguous controller capacity. It cannot
             // prove applied effort, so migration deliberately records zero.
             frame.controller.control_authority = 0.0;
+            frame.controller.capacity_signal = 0.0;
+            frame.controller.controller_effort = 0.0;
             frame.controller.applied_modulation = 0.0;
             frame.controller.modulation = 0.0;
             frame.action.modulation_authority = 0.0;
             frame.action.applied_modulation = 0.0;
-            frame.schema_version = "pulseflow.observation.v2".into();
+            frame.schema_version = "pulseflow.observation.v3".into();
         }
-        "pulseflow.observation.v2" => {}
+        "pulseflow.observation.v2" => {
+            frame.controller.capacity_signal = 0.0;
+            frame.controller.controller_effort = frame.controller.applied_modulation;
+            frame.schema_version = "pulseflow.observation.v3".into();
+        }
+        "pulseflow.observation.v3" => {}
         other => return Err(format!("unsupported schema_version {other}")),
     }
     if safe_session_id(&frame.session_id).is_none() {
@@ -188,7 +210,9 @@ pub fn validate_and_migrate_frame(mut frame: ObservationFrame) -> Result<Observa
     let bounded = [
         ("raw_stress", frame.controller.raw_stress),
         ("filtered_stress", frame.controller.filtered_stress),
+        ("capacity_signal", frame.controller.capacity_signal),
         ("control_authority", frame.controller.control_authority),
+        ("controller_effort", frame.controller.controller_effort),
         ("applied_modulation", frame.controller.applied_modulation),
     ];
     for (name, value) in bounded {
@@ -213,6 +237,44 @@ pub fn read_session_bytes(
     let safe = safe_session_id(session_id).ok_or("unsafe session id")?;
     let path = directory.as_ref().join(format!("{safe}.jsonl"));
     fs::read(&path).map_err(|error| format!("cannot read {}: {error}", path.display()))
+}
+
+pub fn compact_session(
+    directory: impl AsRef<Path>,
+    session_id: &str,
+    summary: SessionSummary,
+) -> Result<SessionCompactionReceipt, String> {
+    let safe = safe_session_id(session_id).ok_or("unsafe session id")?;
+    let directory = directory.as_ref();
+    let raw_path = directory.join(format!("{safe}.jsonl"));
+    let metadata_path = directory.join(format!("{safe}.meta.json"));
+    let raw = fs::read(&raw_path)
+        .map_err(|error| format!("cannot read {}: {error}", raw_path.display()))?;
+    let metadata_bytes = fs::metadata(&metadata_path)
+        .map(|metadata| metadata.len())
+        .unwrap_or(0);
+    let receipt = SessionCompactionReceipt {
+        schema_version: "pulseflow.compaction.v1".into(),
+        session_id: safe.clone(),
+        compacted_at_ms: now_ms(),
+        raw_checksum: stable_hash(&raw),
+        freed_bytes: raw.len() as u64 + metadata_bytes,
+        raw_deleted: true,
+        summary,
+    };
+    let receipt_directory = directory.join("analysis-receipts");
+    fs::create_dir_all(&receipt_directory).map_err(|error| error.to_string())?;
+    let receipt_path = receipt_directory.join(format!("{safe}.analysis.json"));
+    let receipt_bytes = serde_json::to_vec_pretty(&receipt).map_err(|error| error.to_string())?;
+    fs::write(&receipt_path, receipt_bytes)
+        .map_err(|error| format!("cannot write {}: {error}", receipt_path.display()))?;
+    fs::remove_file(&raw_path)
+        .map_err(|error| format!("cannot delete {}: {error}", raw_path.display()))?;
+    if metadata_path.exists() {
+        fs::remove_file(&metadata_path)
+            .map_err(|error| format!("cannot delete {}: {error}", metadata_path.display()))?;
+    }
+    Ok(receipt)
 }
 
 pub fn read_event_tail(path: impl AsRef<Path>, limit: usize) -> Result<Vec<RuntimeEvent>, String> {

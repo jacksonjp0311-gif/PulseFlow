@@ -127,6 +127,9 @@ fn run_control_loop(state: Arc<RwLock<RuntimeState>>, config: Config) {
                     now_ms().saturating_sub(receipt.timestamp_ms) <= 300_000
                 }),
                 locked.session_id.clone(),
+                locked.experiment_id.clone(),
+                locked.epoch_revision,
+                locked.epoch_reason.clone(),
                 locked.metrics.clone(),
                 locked.adaptive_suggestion.clone(),
             ),
@@ -146,6 +149,9 @@ fn run_control_loop(state: Arc<RwLock<RuntimeState>>, config: Config) {
             authority_state,
             verification_fresh,
             session_id,
+            experiment_id,
+            epoch_revision,
+            epoch_reason,
             previous_metrics,
             previous_adaptive_suggestion,
         ) = snapshot;
@@ -214,6 +220,7 @@ fn run_control_loop(state: Arc<RwLock<RuntimeState>>, config: Config) {
             0.0
         };
         if apply.applied == QosLevel::MonitorOnly {
+            control.controller_effort = 0.0;
             control.applied_modulation = 0.0;
             control.modulation = 0.0;
         }
@@ -227,6 +234,10 @@ fn run_control_loop(state: Arc<RwLock<RuntimeState>>, config: Config) {
         );
         let current_frame = ObservationFrame::new(
             session_id,
+            experiment_id,
+            epoch_revision,
+            epoch_reason,
+            tuning_revision,
             sequence,
             sample.clone(),
             control.clone(),
@@ -369,7 +380,10 @@ fn open_current_recorder(
 }
 
 fn print_banner(config: &Config, target_pid: Option<u32>, target_label: &str, supported: bool) {
-    println!("◆  PULSEFLOW GOVERNOR · SYSTEM INTERLINK v0.3.1");
+    println!(
+        "◆  PULSEFLOW GOVERNOR · SYSTEM INTERLINK v{}",
+        env!("CARGO_PKG_VERSION")
+    );
     println!("│");
     println!("├─ ◈  initialize telemetry lattice      ACTIVE");
     println!(

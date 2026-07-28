@@ -13,7 +13,7 @@
   [![Rust 1.75+](https://img.shields.io/badge/Rust-1.75%2B-111820?logo=rust&logoColor=white)](Cargo.toml)
   [![Windows Governor](https://img.shields.io/badge/Windows-process%20QoS-16c784?logo=windows11&logoColor=white)](#safety-is-the-feature)
   [![License: MIT](https://img.shields.io/badge/License-MIT-d9a441.svg)](LICENSE)
-  [![Version](https://img.shields.io/badge/version-0.3.1-16c784.svg)](Cargo.toml)
+  [![Version](https://img.shields.io/badge/version-0.4.0-16c784.svg)](Cargo.toml)
 </div>
 
 <p align="center">
@@ -42,6 +42,34 @@ PulseFlow turns those signals into one inspectable feedback loop:
 > PulseFlow is an instrumentation and experimental-governance system. It does
 > not promise that every workload will become faster, cooler, or cheaper.
 
+## Origin: landing-control theory, extracted for compute
+
+PulseFlow's governing principle grew from James Paul Jackson's independent
+control-theory extraction inspired by the Falcon 9 landing problem: observe a
+changing system, intervene in bounded pulses, preserve dwell between events,
+and judge stability across the full trajectory rather than demanding that
+every instant contract.
+
+That work is formalized in the canonical
+[Pulse-Feedback Stability Theory (PFP v2.0)](https://gist.github.com/jacksonjp0311-gif/8bd6b5446d6308d773ba71b88be36185).
+PulseFlow v0.4.0 turns its most useful ideas into inspectable compute-governance
+signals:
+
+- bounded, event-triggered intervention rather than continuous unbounded force;
+- aggregate contraction using a Lyapunov-style error-energy proxy;
+- contraction confidence and marginal-interval fraction;
+- trigger-density and minimum-inter-event measurements for chatter detection;
+- explicit capacity, authority, and effort channels;
+- experiment epochs that split automatically when mode, tuning, or learning
+  stage changes;
+- falsifiable baseline/candidate evidence instead of automatic performance
+  claims.
+
+This is an independent software and theory project. It contains no SpaceX
+source code or proprietary flight data, and it is not affiliated with or
+endorsed by SpaceX. Falcon 9 and SpaceX are referenced only to describe the
+author's source of engineering inspiration.
+
 ## The idea in one picture
 
 ```mermaid
@@ -66,10 +94,10 @@ control requires identity, verification, authority, and evidence.
 | Surface | Human meaning |
 |---|---|
 | Live telemetry | CPU, RAM, supported NVIDIA GPU utilization, temperature, power, VRAM, process pressure, and optional agent I/O |
-| Pulse controller | Weighted stress, filtering, PID-style feedback, residue memory, bounded forecast, slew limits, and QoS hysteresis |
+| Pulse controller | Weighted stress, filtering, PID-style feedback, residue memory, bounded forecast, slew limits, QoS hysteresis, and distinct capacity/authority/effort signals |
 | System interlink | Discover → connect → verify → enable authority with receipt-linked transitions |
 | Observation lab | Persistent JSONL sessions, metadata, export, historical charts, and aligned next-interval outcomes |
-| Analytics | Stability, prediction RMSE, thermal oscillation, energy, bursts, queue pressure, and full-session summaries |
+| Analytics | Stability, prediction RMSE, aggregate contraction, contraction confidence, trigger density, dwell, thermal oscillation, energy, bursts, queue pressure, and full-session summaries |
 | Replay | Run candidate controller settings over saved observations without changing the live machine |
 | Futurist governor | Bounded pressure forecasts and confidence—not autonomous authority escalation |
 | Memory guard | Contracts background, token, retrieval, concurrency, and batch pressure above 85% RAM; serializes agent work above 95% |
@@ -129,7 +157,8 @@ processes while the server remains running.
 1. **Observe first.** Let a monitor-only baseline record for several minutes.
 2. **Choose one workload.** Keep the program, task, data, and ambient conditions
    as stable as practical.
-3. **Create a fresh session.** Do not mix baseline and governed intervals.
+3. **Create a fresh session.** PulseFlow also opens a new experiment epoch
+   automatically when mode, tuning, or learning stage changes.
 4. **Connect and verify.** Confirm the executable identity before granting
    process-scoped authority.
 5. **Enable bounded governance.** PulseFlow applies only supported QoS changes.
@@ -137,14 +166,16 @@ processes while the server remains running.
 7. **Compare sessions.** Treat results as descriptive until the sample boundary
    and experimental controls are satisfied.
 8. **Replay before retuning.** Candidate gains belong in replay or shadow first.
-9. **Delete raw recordings after analysis** when the aggregate evidence you need
-   has been preserved.
+9. **Analyze and delete raw recordings** from Dataset when the aggregate
+   evidence you need has been preserved. PulseFlow writes a validated analysis
+   receipt before deleting an inactive session's raw files.
 
 Saved data is local:
 
 ```text
 state/sessions/<session-id>.jsonl
 state/sessions/<session-id>.meta.json
+state/sessions/analysis-receipts/<session-id>.analysis.json
 ```
 
 PulseFlow does not upload recordings to a cloud service. Runtime state is
@@ -223,6 +254,8 @@ The local web console includes:
 - Pressure forecast and confidence
 - Process discovery and interlink verification
 - Recording controls and session export
+- One-confirmation analyze-and-delete compaction for inactive sessions
+- Aggregate contraction, contraction confidence, trigger density, and dwell
 - Baseline/candidate comparison
 - Controller replay with candidate tuning
 - Authority receipts and runtime event ledger
@@ -256,6 +289,7 @@ PulseFlow binds to loopback by default: `127.0.0.1:8791`.
 | `POST` | `/api/compare` | Baseline/candidate report |
 | `POST` | `/api/recording` | Start or pause recording |
 | `POST` | `/api/session/new` | Begin a clean recording session |
+| `POST` | `/api/session/compact` | Validate, summarize, receipt, and delete an inactive raw session |
 
 Machine-readable contracts live in `schemas/`.
 

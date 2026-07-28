@@ -1,6 +1,6 @@
 use crate::{
     config::AnalyticsConfig,
-    model::{ObservationFrame, RuntimeMetrics},
+    model::{ObservationFrame, QosLevel, RuntimeMetrics},
 };
 use std::collections::VecDeque;
 
@@ -12,8 +12,11 @@ struct MetricSample {
     temperature_c: Option<f64>,
     raw_stress: f64,
     filtered_stress: f64,
+    setpoint: f64,
     residue: f64,
     applied_modulation: f64,
+    timestamp_ms: u128,
+    applied_qos: QosLevel,
 }
 
 pub struct AnalyticsEngine {
@@ -75,8 +78,11 @@ impl AnalyticsEngine {
             temperature_c: frame.machine.gpu_temperature_c,
             raw_stress: frame.controller.raw_stress,
             filtered_stress: frame.controller.filtered_stress,
+            setpoint: frame.controller.setpoint,
             residue: frame.controller.residue,
             applied_modulation: frame.controller.applied_modulation,
+            timestamp_ms: frame.timestamp_ms,
+            applied_qos: frame.controller.applied_qos,
         });
         let capacity = self.config.rolling_window_samples.max(8);
         while self.window.len() > capacity {
@@ -158,6 +164,20 @@ impl AnalyticsEngine {
             mean(&modulations),
             &self.config,
         );
+        let pulse_metrics = pulse_feedback_metrics(
+            &self
+                .window
+                .iter()
+                .map(|sample| {
+                    (
+                        sample.timestamp_ms,
+                        sample.filtered_stress,
+                        sample.setpoint,
+                        sample.applied_qos,
+                    )
+                })
+                .collect::<Vec<_>>(),
+        );
 
         RuntimeMetrics {
             samples: self.samples,
@@ -194,7 +214,68 @@ impl AnalyticsEngine {
             forecast_trend_per_sample: forecast_trend,
             forecast_confidence,
             forecast_pressure_risk: pressure_risk,
+            lyapunov_delta_total: pulse_metrics.lyapunov_delta_total,
+            lyapunov_decrement_mean: pulse_metrics.lyapunov_decrement_mean,
+            contraction_confidence: pulse_metrics.contraction_confidence,
+            marginal_fraction: pulse_metrics.marginal_fraction,
+            trigger_density_per_minute: pulse_metrics.trigger_density_per_minute,
+            minimum_inter_event_ms: pulse_metrics.minimum_inter_event_ms,
         }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Default)]
+struct PulseFeedbackMetrics {
+    lyapunov_delta_total: f64,
+    lyapunov_decrement_mean: f64,
+    contraction_confidence: f64,
+    marginal_fraction: f64,
+    trigger_density_per_minute: f64,
+    minimum_inter_event_ms: Option<u64>,
+}
+
+fn pulse_feedback_metrics(samples: &[(u128, f64, f64, QosLevel)]) -> PulseFeedbackMetrics {
+    if samples.len() < 2 {
+        return PulseFeedbackMetrics::default();
+    }
+    let deltas: Vec<f64> = samples
+        .windows(2)
+        .map(|window| {
+            let before = 0.5 * (window[0].1 - window[0].2).powi(2);
+            let after = 0.5 * (window[1].1 - window[1].2).powi(2);
+            after - before
+        })
+        .collect();
+    let contraction_count = deltas.iter().filter(|delta| **delta < 0.0).count();
+    let marginal_tolerance = 0.0005;
+    let marginal_count = deltas
+        .iter()
+        .filter(|delta| delta.abs() <= marginal_tolerance)
+        .count();
+    let transition_times: Vec<u128> = samples
+        .windows(2)
+        .filter_map(|window| (window[0].3 != window[1].3).then_some(window[1].0))
+        .collect();
+    let elapsed_minutes = samples
+        .last()
+        .map(|last| last.0.saturating_sub(samples[0].0) as f64 / 60_000.0)
+        .unwrap_or(0.0);
+    let minimum_inter_event_ms = transition_times
+        .windows(2)
+        .map(|window| window[1].saturating_sub(window[0]) as u64)
+        .min();
+    let lyapunov_delta_total = deltas.iter().sum::<f64>();
+    PulseFeedbackMetrics {
+        lyapunov_delta_total,
+        lyapunov_decrement_mean: -lyapunov_delta_total / deltas.len() as f64,
+        contraction_confidence: contraction_count as f64 / deltas.len() as f64,
+        marginal_fraction: marginal_count as f64 / deltas.len() as f64,
+        trigger_density_per_minute: if elapsed_minutes > 0.0 {
+            transition_times.len() as f64 / elapsed_minutes
+        } else {
+            0.0
+        },
+        minimum_inter_event_ms,
     }
 }
 
@@ -525,6 +606,33 @@ pub fn summarize_session(
         .map(|(prefix, _)| prefix)
         .unwrap_or(session_id)
         .to_string();
+    let pulse_metrics = pulse_feedback_metrics(
+        &frames
+            .iter()
+            .map(|frame| {
+                (
+                    frame.timestamp_ms,
+                    frame.controller.filtered_stress,
+                    frame.controller.setpoint,
+                    frame.controller.applied_qos,
+                )
+            })
+            .collect::<Vec<_>>(),
+    );
+    let mut modes: Vec<String> = frames
+        .iter()
+        .map(|frame| format!("{:?}", frame.action.mode).to_lowercase())
+        .collect();
+    modes.sort();
+    modes.dedup();
+    let experiment_id = frames
+        .first()
+        .map(|frame| frame.experiment_id.clone())
+        .unwrap_or_default();
+    let epoch_revision = frames
+        .first()
+        .map(|frame| frame.epoch_revision)
+        .unwrap_or_default();
 
     SessionSummary {
         session_id: session_id.to_string(),
@@ -572,6 +680,16 @@ pub fn summarize_session(
         dropped_samples,
         target_label,
         sampling_interval_ms: (!intervals.is_empty()).then(|| mean(&intervals).round() as u64),
+        homogeneous_mode: modes.len() <= 1,
+        modes,
+        experiment_id,
+        epoch_revision,
+        lyapunov_delta_total: pulse_metrics.lyapunov_delta_total,
+        lyapunov_decrement_mean: pulse_metrics.lyapunov_decrement_mean,
+        contraction_confidence: pulse_metrics.contraction_confidence,
+        marginal_fraction: pulse_metrics.marginal_fraction,
+        trigger_density_per_minute: pulse_metrics.trigger_density_per_minute,
+        minimum_inter_event_ms: pulse_metrics.minimum_inter_event_ms,
     }
 }
 

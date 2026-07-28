@@ -67,9 +67,12 @@ fn controller_outputs_remain_bounded() {
         assert!((0.0..=1.0).contains(&snapshot.raw_stress));
         assert!((0.0..=1.0).contains(&snapshot.filtered_stress));
         assert!((0.0..=1.0).contains(&snapshot.modulation));
+        assert!((0.0..=1.0).contains(&snapshot.capacity_signal));
+        assert!((0.0..=1.0).contains(&snapshot.controller_effort));
         assert!((0.0..=1.0).contains(&snapshot.applied_modulation));
         assert!((0.0..=1.0).contains(&snapshot.control_authority));
         assert_eq!(snapshot.modulation, snapshot.applied_modulation);
+        assert_eq!(snapshot.controller_effort, snapshot.applied_modulation);
         assert!((-1.0..=1.0).contains(&snapshot.residue));
     }
 }

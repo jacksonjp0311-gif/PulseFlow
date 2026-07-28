@@ -301,7 +301,7 @@
     @media (max-width:1300px) { .coherence-scope-card { width:34%; } .system-link-chip { min-width:135px; } }
     @media (max-width:1050px) { .coherence-scope-card { display:none; } .header-status-card { display:none; } }
 
-    /* PulseFlow 0.3.1 · 2035 interlink and modulation field */
+    /* PulseFlow 0.4.0 · 2035 interlink and modulation field */
     .modulation-view {
       background:
         radial-gradient(circle at 50% 50%, rgba(0,168,90,.10), transparent 26%),
@@ -388,11 +388,11 @@
 <div class="shell">
   <header class="topbar">
     <div class="micro-grid">
-      <div class="micro">SYS ID: <b id="sys-id">PF-GOV-0.3.1</b></div><div class="micro">TEMP: <b id="header-temp">--°C</b></div>
+      <div class="micro">VERSION: <b class="accent" id="app-version">v0.4.0</b></div><div class="micro">TEMP: <b id="header-temp">--°C</b></div>
       <div class="micro">BUILD: <b>OBS-LAB-2035</b></div><div class="micro">MODE: <b id="header-mode">BALANCED</b></div>
       <div class="micro">SESSION: <b id="header-session">--</b></div><div class="micro">AGENT: <b id="header-agent">UNBOUND</b></div>
     </div>
-    <div><div class="title">PULSEFLOW GOVERNOR</div><div class="subtitle">Pulse Feedback Modulation Lab</div></div>
+    <div><div class="title">PULSEFLOW GOVERNOR <span class="accent" id="title-version">v0.4.0</span></div><div class="subtitle">Pulse Feedback Modulation Lab · PFP v2.0 observables</div></div>
     <div class="top-right">
       <div class="header-status-card">
         <div><span>QoS</span><b class="accent" id="header-qos">MONITOR</b></div>
@@ -481,7 +481,7 @@
           <div class="resource-node node-gpu"><strong>GPU</strong><small>Host load <b class="accent" id="node-gpu">--%</b><br>Temperature <b id="node-gpu-temp">--°C</b></small></div>
           <div class="resource-node node-io"><strong>I/O</strong><small>Agent queue <b class="accent" id="node-io">0</b><br>Latency <b id="node-latency">0 ms</b></small></div>
           <div class="core-reactor">
-            <div class="core-readout"><small>Control authority</small><strong id="core-authority">0%</strong><small>Applied modulation</small><strong id="core-modulation">0%</strong><span id="core-qos">MONITOR ONLY</span></div>
+            <div class="core-readout"><small>Authorized envelope</small><strong id="core-authority">0%</strong><small>Capacity signal</small><strong id="core-capacity">0%</strong><small>Controller effort</small><strong id="core-modulation">0%</strong><span id="core-qos">MONITOR ONLY</span></div>
           </div>
           <div class="core-proof"><span>Target <b id="core-target">UNBOUND</b></span><span>Process QoS <b id="core-process-channel">OFF</b></span><span>Agent adapter <b id="core-agent-channel">WAIT</b></span></div>
         </div>
@@ -494,7 +494,7 @@
           <div class="data-card"><h3>Active Dataset</h3><div class="big-value" id="dataset-samples">0</div><div class="mini-copy"><b id="dataset-session">--</b><br><span id="dataset-size">0 B</span> persisted as JSONL observation frames.</div></div>
           <div class="data-card"><h3>Persistence Contract</h3><div class="mini-copy"><b>Dₜ = (Xₜ, Aₜ, Rₜ, Yₜ₊Δ)</b><br>Every interval stores machine and workload state, selected action, unresolved residue, measured outcome, and rolling metrics.</div></div>
         </div>
-        <div class="data-card" style="margin-top:10px"><h3>Saved Sessions</h3><div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap"><select id="session-select" style="min-width:280px;padding:7px;border:1px solid #222"></select><button class="btn" data-action="session-refresh">Refresh</button><button class="btn" data-action="session-load">Load Charts</button><button class="btn" data-action="session-live">Return Live</button><button class="btn" data-action="session-export">Export JSONL</button><button class="btn primary" data-action="session-new">New Session</button></div><div class="table-wrap"><table><thead><tr><th>Session</th><th>Samples</th><th>Bytes</th><th>Last sample</th><th>Target</th></tr></thead><tbody id="session-table"></tbody></table></div></div>
+        <div class="data-card" style="margin-top:10px"><h3>Saved Sessions</h3><div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap"><select id="session-select" style="min-width:280px;padding:7px;border:1px solid #222"></select><button class="btn" data-action="session-refresh">Refresh</button><button class="btn" data-action="session-load">Load Charts</button><button class="btn" data-action="session-live">Return Live</button><button class="btn" data-action="session-export">Export JSONL</button><button class="btn" data-action="session-compact">Analyze &amp; Delete Raw</button><button class="btn primary" data-action="session-new">New Session</button></div><div class="table-wrap"><table><thead><tr><th>Session</th><th>Samples</th><th>Bytes</th><th>Last sample</th><th>Target</th></tr></thead><tbody id="session-table"></tbody></table></div><p class="mini-copy">Analyze &amp; Delete Raw validates every frame, preserves an aggregate analysis receipt, then deletes the selected inactive JSONL and metadata to reclaim space. The active session is protected.</p><pre class="json-box" id="compaction-receipt" style="margin-top:8px">No session compacted in this run.</pre></div>
         <div class="data-card" style="margin-top:10px"><h3>Latest Frame</h3><pre class="json-box" id="latest-frame-json">Waiting for first observation frame…</pre></div>
       </div>
 
@@ -530,6 +530,8 @@
           <div class="data-card"><h3>Energy per Token</h3><div class="big-value" id="metric-ept">-- J</div><div class="mini-copy">Estimated energy divided by integrated token production.</div></div>
           <div class="data-card"><h3>Oscillation Coherence</h3><div class="big-value" id="metric-coherence">--%</div><div class="mini-copy">Normalized agreement between the raw workload trajectory and the aligned filtered trajectory over the rolling window.</div></div>
           <div class="data-card"><h3>Futurist Governor</h3><div class="big-value" id="metric-forecast">ACQUIRING</div><div class="mini-copy" id="forecast-copy">Bounded forward-pressure forecast; it never widens control authority.</div></div>
+          <div class="data-card"><h3>Aggregate Contraction</h3><div class="big-value" id="metric-contraction">--</div><div class="mini-copy">Rolling Lyapunov proxy ΔV. Negative total ΔV indicates aggregate contraction; individual intervals may expand.</div></div>
+          <div class="data-card"><h3>Trigger Density</h3><div class="big-value" id="metric-trigger-density">0/min</div><div class="mini-copy" id="trigger-copy">Applied QoS event density and observed minimum inter-event time expose chatter and dwell behavior.</div></div>
         </div>
         <div class="data-card" style="margin-top:10px"><h3>Baseline / Candidate Comparison</h3>
           <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end">
@@ -707,6 +709,7 @@
     "session-load": loadSessionCharts,
     "session-live": loadHistory,
     "session-export": exportSession,
+    "session-compact": compactSession,
     "replay-load": loadReplayFrames,
     "replay-run": runReplay,
     "analytics-compare": compareSessions,
@@ -948,6 +951,24 @@
     if (!session) throw new Error("No session selected.");
     window.location.href = `/api/export/${encodeURIComponent(session)}`;
   }
+  async function compactSession() {
+    const session = selectedSession();
+    if (!session) throw new Error("No session selected.");
+    if (App.status && session === App.status.session_id) {
+      throw new Error("Start a new session before compacting the active one.");
+    }
+    const approved = window.confirm(
+      `Analyze ${session}, preserve its aggregate receipt, and permanently delete its raw JSONL and metadata?`
+    );
+    if (!approved) return;
+    const receipt = await api("/api/session/compact", {
+      method: "POST",
+      body: {session_id: session, confirm_delete_raw: true}
+    });
+    $("#compaction-receipt").textContent = JSON.stringify(receipt, null, 2);
+    toast(`Analysis preserved; ${formatBytes(receipt.freed_bytes)} of raw data deleted.`);
+    await loadSessions();
+  }
   async function setStage(stage) {
     await api("/api/learning-stage", {method: "POST", body: {stage}});
     toast(`Learning stage set to ${stage}.`);
@@ -1074,6 +1095,8 @@
     $("#connection-label").textContent = App.connected ? "CONNECTED" : "DISCONNECTED";
     $("#header-temp").textContent = gpu.temperature_c != null ? `${number(gpu.temperature_c,0)}°C` : "--°C";
     $("#header-mode").textContent = String(s.mode || "balanced").toUpperCase();
+    setText("#app-version", `v${s.version || "0.4.0"}`);
+    setText("#title-version", `v${s.version || "0.4.0"}`);
     $("#header-session").textContent = String(s.session_id || "--").slice(-12).toUpperCase();
     $("#header-agent").textContent = s.agent_bound ? String(io.agent || "bound").toUpperCase() : "UNBOUND";
     $("#header-qos").textContent = String(c.applied_qos || "monitor_only").replaceAll("_"," ").toUpperCase();
@@ -1107,6 +1130,7 @@
     setText("#node-io", String((io.input_queue||0)+(io.output_queue||0))); setText("#node-latency", `${number(io.latency_ms)} ms`);
     setText("#stability-label", stability > 80 ? "STABLE" : stability > 55 ? "TRACKING" : "VARIABLE"); setText("#core-confidence", number(m.policy_confidence,2));
     setText("#core-authority", `${number(clamp(c.control_authority || 0,0,1) * 100,0)}%`);
+    setText("#core-capacity", `${number(clamp(c.capacity_signal || 0,0,1) * 100,0)}%`);
     setText("#core-modulation", `${number(clamp(c.applied_modulation || 0,0,1) * 100,0)}%`); setText("#core-qos", String(c.applied_qos || "monitor_only").replaceAll("_"," ").toUpperCase());
     const coreStage = $("#core-stage"); if (coreStage) coreStage.style.setProperty("--modulation", clamp(c.applied_modulation || 0,0,1));
 
@@ -1135,6 +1159,9 @@
     setText("#metric-coherence", m.oscillation_coherence != null ? `${number(m.oscillation_coherence * 100,1)}%` : "--%");
     setText("#metric-forecast", m.forecast_stress != null ? `${number(m.forecast_stress * 100,1)}% · ${number(m.forecast_confidence * 100,0)}% CONF` : "ACQUIRING");
     setText("#forecast-copy", m.forecast_stress != null ? `Trend ${number(m.forecast_trend_per_sample,4)} / sample · pressure risk ${number(m.forecast_pressure_risk * 100,1)}% · ${String(m.turbulence_state || "insufficient_data").replaceAll("_"," ").toUpperCase()}` : "A minimum of eight aligned samples is required; forecasts never widen control authority.");
+    setText("#metric-contraction", `${number(m.lyapunov_delta_total,5)} ΔV · ${number((m.contraction_confidence || 0) * 100,0)}%`);
+    setText("#metric-trigger-density", `${number(m.trigger_density_per_minute,2)}/min`);
+    setText("#trigger-copy", `Minimum inter-event time ${m.minimum_inter_event_ms != null ? `${m.minimum_inter_event_ms} ms` : "not yet observed"} · marginal intervals ${number((m.marginal_fraction || 0) * 100,0)}%.`);
 
     setText("#recording-label", s.recording ? "RECORDING" : "PAUSED"); setText("#record-duration", formatDuration(m.elapsed_seconds)); setText("#record-size", formatBytes(s.session_bytes)); setText("#record-samples", String(s.session_samples));
     $$('[data-action="recording-toggle"]').forEach(node => node.textContent = s.recording ? "Pause Recording" : "Start Recording");

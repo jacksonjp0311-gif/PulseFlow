@@ -85,6 +85,11 @@
     },
     {
       "method": "POST",
+      "path": "/api/session/compact",
+      "purpose": "Validate and summarize an inactive session, persist an analysis receipt, then delete its raw JSONL and metadata after explicit confirmation."
+    },
+    {
+      "method": "POST",
       "path": "/api/replay",
       "purpose": "Recompute a candidate controller trace over recorded observations."
     },
