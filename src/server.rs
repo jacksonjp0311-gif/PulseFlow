@@ -524,7 +524,9 @@ fn dispatch(
                         | AuthorityState::Faulted
                 )
             {
-                return Err("disconnect requires an existing target, mesh, or authority link".into());
+                return Err(
+                    "disconnect requires an existing target, mesh, or authority link".into(),
+                );
             }
             let receipt_target = locked.target_identity.clone();
             let resulting = transition(previous, AuthorityAction::Disconnect)?;

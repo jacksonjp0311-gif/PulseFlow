@@ -110,10 +110,7 @@ impl AgentSession {
     }
 
     pub fn snapshot(&self) -> Vec<ChatMessage> {
-        self.history
-            .lock()
-            .map(|h| h.clone())
-            .unwrap_or_default()
+        self.history.lock().map(|h| h.clone()).unwrap_or_default()
     }
 
     fn push(&self, msg: ChatMessage) {
@@ -389,12 +386,8 @@ pub fn apply_config_patch(patch: AgentConfigPatch) -> Result<Value, String> {
             secrets.keys.insert(key_provider.clone(), t.to_string());
             // Share OpenRouter credentials with the free Nemotron preset.
             if key_provider == "nemotron_free" || key_provider == "openrouter" {
-                secrets
-                    .keys
-                    .insert("openrouter".into(), t.to_string());
-                secrets
-                    .keys
-                    .insert("nemotron_free".into(), t.to_string());
+                secrets.keys.insert("openrouter".into(), t.to_string());
+                secrets.keys.insert("nemotron_free".into(), t.to_string());
             }
         }
     }
@@ -832,10 +825,13 @@ fn execute_tool(
             match (parsed, state.write()) {
                 (Some(mode), Ok(mut locked)) => {
                     locked.mode = mode;
-                    let _ = locked.push_event("mode", format!("Mode set to {mode:?} by Cortex agent."));
+                    let _ =
+                        locked.push_event("mode", format!("Mode set to {mode:?} by Cortex agent."));
                     json!({"ok": true, "mode": mode})
                 }
-                (None, _) => json!({"ok": false, "error": "mode must be quiet|balanced|performance"}),
+                (None, _) => {
+                    json!({"ok": false, "error": "mode must be quiet|balanced|performance"})
+                }
                 (_, Err(_)) => json!({"ok": false, "error": "state lock poisoned"}),
             }
         }
@@ -1035,7 +1031,9 @@ pub fn chat(
         rounds += 1;
         if rounds > MAX_TOOL_ROUNDS {
             if final_text.is_empty() {
-                final_text = "Tool loop limit reached. Partial context is available in the tool trace.".into();
+                final_text =
+                    "Tool loop limit reached. Partial context is available in the tool trace."
+                        .into();
             }
             break;
         }
@@ -1063,9 +1061,7 @@ pub fn chat(
 
         messages.push(choice.clone());
 
-        if tool_calls.is_null()
-            || tool_calls.as_array().map(|a| a.is_empty()).unwrap_or(true)
-        {
+        if tool_calls.is_null() || tool_calls.as_array().map(|a| a.is_empty()).unwrap_or(true) {
             final_text = content;
             session.push(ChatMessage {
                 role: "assistant".into(),
@@ -1109,9 +1105,7 @@ pub fn chat(
                 .unwrap_or("")
                 .to_string();
             let args: Value = match call.pointer("/function/arguments") {
-                Some(Value::String(s)) => {
-                    serde_json::from_str(s).unwrap_or_else(|_| json!({}))
-                }
+                Some(Value::String(s)) => serde_json::from_str(s).unwrap_or_else(|_| json!({})),
                 Some(Value::Object(map)) => Value::Object(map.clone()),
                 Some(other) => other.clone(),
                 None => json!({}),
