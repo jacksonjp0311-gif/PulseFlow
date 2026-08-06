@@ -301,6 +301,10 @@
     "agent-model",
     "agent-api-key",
     "agent-base-url",
-    "agent-chat-input"
+    "agent-chat-input",
+    "mesh-live-note",
+    "mesh-live-count",
+    "mesh-live-transitions",
+    "mesh-target-chips"
   ]
 }

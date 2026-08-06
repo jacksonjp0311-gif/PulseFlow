@@ -90,6 +90,11 @@
     },
     {
       "method": "GET",
+      "path": "/api/mesh/status",
+      "purpose": "Live Pulse Mesh targets, transitions, RAM Eco threshold, and ability-test protocol."
+    },
+    {
+      "method": "GET",
       "path": "/api/directive",
       "purpose": "Latest resource-homeostasis recommendation."
     },

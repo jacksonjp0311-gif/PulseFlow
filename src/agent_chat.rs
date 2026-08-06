@@ -423,7 +423,10 @@ fn tool_catalog_public() -> Value {
         {"name": "enable_pulse_mesh", "purpose": "Arm whole-system Pulse Mesh (mutation)."},
         {"name": "disconnect_governance", "purpose": "Disconnect mesh/process authority (mutation)."},
         {"name": "set_mode", "purpose": "Set quiet/balanced/performance mode (mutation)."},
-        {"name": "list_processes", "purpose": "Discover top controllable processes."}
+        {"name": "list_processes", "purpose": "Discover top controllable processes."},
+        {"name": "mesh_status", "purpose": "Live Pulse Mesh targets, QoS, RAM Eco threshold, session protocol."},
+        {"name": "compact_inactive_sessions", "purpose": "Compact large inactive raw sessions into graph blobs (storage hygiene)."},
+        {"name": "mesh_debrief", "purpose": "Spoken debrief of current/last mesh ability from live metrics."}
     ])
 }
 
@@ -550,6 +553,30 @@ fn tools_openai_schema() -> Value {
                     "additionalProperties": false
                 }
             }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "mesh_status",
+                "description": "Live Pulse Mesh status: targets, transitions, applied QoS, RAM Eco threshold, ability protocol steps.",
+                "parameters": {"type": "object", "properties": {}, "additionalProperties": false}
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "compact_inactive_sessions",
+                "description": "Compact large inactive raw JSONL sessions into learning graph blobs to free disk.",
+                "parameters": {"type": "object", "properties": {}, "additionalProperties": false}
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "mesh_debrief",
+                "description": "Produce a short spoken debrief of mesh/plant ability from live metrics and sessions.",
+                "parameters": {"type": "object", "properties": {}, "additionalProperties": false}
+            }
         }
     ])
 }
@@ -631,6 +658,8 @@ pub fn build_cortex_snapshot(state: &RuntimeState, config: &Config) -> Value {
         "mesh_mode": state.mesh_mode,
         "mesh_targets": state.mesh_targets,
         "mesh_note": state.mesh_note,
+        "mesh_target_list": state.mesh_target_list,
+        "mesh_transition_count": state.mesh_transition_count,
         "governor_active": state.governor_active,
         "mode": state.mode,
         "target_label": state.target_label,
@@ -839,6 +868,137 @@ fn execute_tool(
             let limit = args.get("limit").and_then(|v| v.as_u64()).unwrap_or(12) as usize;
             json!({"ok": true, "processes": list_top_processes(limit.clamp(1, 20))})
         }
+        "mesh_status" => match state.read() {
+            Ok(locked) => json!({
+                "ok": true,
+                "mesh_mode": locked.mesh_mode,
+                "mesh_targets": locked.mesh_targets,
+                "mesh_target_list": locked.mesh_target_list,
+                "mesh_note": locked.mesh_note,
+                "mesh_transition_count": locked.mesh_transition_count,
+                "applied_qos": locked.control.applied_qos,
+                "ram_percent": locked.telemetry.memory_percent,
+                "mesh_eco_threshold": crate::governor::MeshController::mesh_eco_ram_threshold(
+                    locked.system_profile.eco_ram_enter_percent
+                ),
+                "coherence": locked.metrics.oscillation_coherence,
+                "protocol": "baseline ≥90s → mesh ≥5min → observe ≥90s → pair report"
+            }),
+            Err(_) => json!({"ok": false, "error": "state lock poisoned"}),
+        },
+        "compact_inactive_sessions" => {
+            let active = state
+                .read()
+                .ok()
+                .map(|l| l.session_id.clone())
+                .unwrap_or_default();
+            let sessions = match storage::list_sessions(&config.storage.directory) {
+                Ok(s) => s,
+                Err(e) => return json!({"ok": false, "error": e}),
+            };
+            let mut compacted = 0u64;
+            let mut freed = 0u64;
+            let form = state
+                .read()
+                .ok()
+                .map(|l| {
+                    (
+                        l.system_profile.form_factor.as_str().to_string(),
+                        l.system_profile.known_as.clone(),
+                    )
+                })
+                .unwrap_or_else(|| ("desktop".into(), "host".into()));
+            for session in sessions {
+                if session.session_id == active {
+                    continue;
+                }
+                if session.bytes < 2 * 1024 * 1024 && session.samples < 2_000 {
+                    continue;
+                }
+                let frames = match storage::read_session_frames(
+                    &config.storage.directory,
+                    &session.session_id,
+                    config.storage.maximum_query_samples.max(10_000),
+                ) {
+                    Ok(f) => f,
+                    Err(_) => continue,
+                };
+                if frames.is_empty() {
+                    continue;
+                }
+                let mut summary = crate::analytics::summarize_session(
+                    &session.session_id,
+                    &frames,
+                    config.analytics.epsilon,
+                );
+                let calibration = crate::futurist::calibrate_session(
+                    &session.session_id,
+                    &frames,
+                    config.analytics.epsilon,
+                );
+                summary.futurist_skill_improvement = calibration.skill.relative_improvement;
+                summary.system_form_factor = form.0.clone();
+                let points = crate::analytics::learning_graph_points(&frames, 256);
+                let options = storage::CompactOptions {
+                    system_form_factor: form.0.clone(),
+                    system_known_as: form.1.clone(),
+                    futurist_skill_mae_h5: calibration.skill.mae_h5,
+                    futurist_skill_improvement: calibration.skill.relative_improvement,
+                    futurist_beats_persist: calibration.skill.beats_persist,
+                };
+                if let Ok(receipt) = storage::compact_session_with_options(
+                    &config.storage.directory,
+                    &session.session_id,
+                    summary,
+                    points,
+                    options,
+                ) {
+                    compacted = compacted.saturating_add(1);
+                    freed = freed.saturating_add(receipt.freed_bytes);
+                }
+            }
+            json!({"ok": true, "compacted": compacted, "freed_bytes": freed})
+        }
+        "mesh_debrief" => match state.read() {
+            Ok(locked) => {
+                let coh = locked
+                    .metrics
+                    .oscillation_coherence
+                    .map(|c| format!("{:.0}%", c * 100.0))
+                    .unwrap_or_else(|| "n/a".into());
+                let spoken = if locked.mesh_mode {
+                    format!(
+                        "Mesh is live. Host RAM {:.0}% versus Eco gate ~{:.0}%. Applied {:?}. {} target(s): {}. Transitions so far: {}. Coherence {}. Stability {:.2}. Speak next: keep multi-app load for at least five minutes, then disconnect and compare to baseline.",
+                        locked.telemetry.memory_percent,
+                        crate::governor::MeshController::mesh_eco_ram_threshold(
+                            locked.system_profile.eco_ram_enter_percent
+                        ),
+                        locked.control.applied_qos,
+                        locked.mesh_targets,
+                        locked
+                            .mesh_target_list
+                            .iter()
+                            .map(|t| format!("{}#{}", t.name, t.pid))
+                            .collect::<Vec<_>>()
+                            .join(", "),
+                        locked.mesh_transition_count,
+                        coh,
+                        locked.metrics.flow_stability
+                    )
+                } else {
+                    format!(
+                        "Mesh is off. Host RAM {:.0}%, stress {:.2}, coherence {}, stability {:.2}, zone {}. Ability protocol: free plant ninety seconds, enable Pulse Mesh five minutes under normal multi-app load, disconnect, then pair-report baseline versus mesh.",
+                        locked.telemetry.memory_percent,
+                        locked.control.filtered_stress,
+                        coh,
+                        locked.metrics.flow_stability,
+                        locked.metrics.envelope_zone
+                    )
+                };
+                json!({"ok": true, "spoken": spoken, "mesh_mode": locked.mesh_mode})
+            }
+            Err(_) => json!({"ok": false, "error": "state lock poisoned"}),
+        },
         other => json!({"ok": false, "error": format!("unknown tool: {other}")}),
     }
 }

@@ -1,16 +1,16 @@
 use pulseflow_governor::{
     adaptive,
-    analytics::AnalyticsEngine,
+    analytics::{self, AnalyticsEngine},
     authority::AuthorityState,
     config::Config,
     controller::PulseController,
     futurist,
-    governor::{self, platform_governor_supported, ProcessGovernor},
+    governor::{platform_governor_supported, MeshController, ProcessGovernor},
     model::{now_ms, ObservationFrame, QosLevel, RuntimeEvent, RuntimeState, RuntimeTuning},
     policy::{self, MemoryGuard},
     regime::RegimeArbiter,
     server,
-    storage::{append_event, FrameRecorder},
+    storage::{self, append_event, FrameRecorder},
     system,
     telemetry::TelemetryCollector,
 };
@@ -165,6 +165,7 @@ fn run_control_loop(state: Arc<RwLock<RuntimeState>>, config: Config) {
     let mut controller =
         PulseController::new(config.control.clone(), config.weights.clone(), monitor_only);
     let mut governor = ProcessGovernor::new(target_pid, config.governor.clone());
+    let mut mesh_controller = MeshController::default();
     let mut analytics = AnalyticsEngine::new(config.analytics.clone());
     let interval = Duration::from_millis(config.sample_interval_ms.max(250));
     let dt = interval.as_secs_f64();
@@ -175,8 +176,10 @@ fn run_control_loop(state: Arc<RwLock<RuntimeState>>, config: Config) {
     let mut recorder = open_current_recorder(&state, &config);
     let mut pending_frame: Option<(ObservationFrame, bool)> = None;
     let mut profile_refresh_counter = 0u64;
+    let mut auto_compact_counter = 0u64;
     let mut regime_arbiter = RegimeArbiter::default();
     let mut last_regime_code = String::new();
+    let mut last_mesh_mode = false;
     // Initial adaptive profile — know thy system.
     {
         let initial = system::probe(platform_governor_supported(), false);
@@ -324,17 +327,45 @@ fn run_control_loop(state: Arc<RwLock<RuntimeState>>, config: Config) {
         );
         let mut mesh_note = String::new();
         let mut mesh_targets = 0u32;
+        let mut mesh_target_list = Vec::new();
+        let mut mesh_heartbeat = false;
+        let mut mesh_transition = false;
+        if mesh_mode && !last_mesh_mode {
+            mesh_controller.reset();
+        }
+        if !mesh_mode && last_mesh_mode {
+            mesh_controller.reset();
+        }
+        last_mesh_mode = mesh_mode;
+        let eco_enter = state
+            .read()
+            .ok()
+            .map(|locked| locked.system_profile.eco_ram_enter_percent)
+            .unwrap_or(88.0);
         let apply = if effective_active && mesh_mode {
-            // Whole-system mesh: Eco/ThermalProtect lands on top pressure processes.
-            let (count, note) = governor::apply_mesh_qos(control.requested_qos, 4);
-            mesh_targets = count;
-            mesh_note = note;
-            control.applied_qos = control.requested_qos;
-            // Synthetic apply result for logging.
+            // RAM-first mesh: force Eco when host pressure crosses mesh threshold.
+            let requested = MeshController::prefer_mesh_qos(
+                control.requested_qos,
+                sample.memory_percent,
+                eco_enter,
+            );
+            control.requested_qos = requested;
+            let mesh = mesh_controller.step(
+                requested,
+                sample.memory_percent,
+                config.governor.minimum_dwell_ms,
+                30_000,
+            );
+            mesh_targets = mesh.targets;
+            mesh_note = mesh.message.clone();
+            mesh_target_list = mesh.target_list;
+            mesh_heartbeat = mesh.heartbeat;
+            mesh_transition = mesh.transition;
+            control.applied_qos = mesh.applied;
             pulseflow_governor::governor::ApplyResult {
-                changed: count > 0,
-                applied: control.requested_qos,
-                message: mesh_note.clone(),
+                changed: mesh.changed || mesh.heartbeat,
+                applied: mesh.applied,
+                message: mesh.message,
             }
         } else if effective_active {
             governor.apply(control.requested_qos)
@@ -590,6 +621,8 @@ fn run_control_loop(state: Arc<RwLock<RuntimeState>>, config: Config) {
             if mesh_mode {
                 locked.mesh_note = mesh_note.clone();
                 locked.mesh_targets = mesh_targets;
+                locked.mesh_target_list = mesh_target_list.clone();
+                locked.mesh_transition_count = mesh_controller.transition_count;
             }
             locked.telemetry = sample;
             locked.control = control;
@@ -632,7 +665,12 @@ fn run_control_loop(state: Arc<RwLock<RuntimeState>>, config: Config) {
                 locked.push_frame(frame, config.storage.recent_history_capacity);
             }
             if apply.changed {
-                ledger_events.push(locked.push_event("qos", apply.message));
+                let kind = if mesh_heartbeat && !mesh_transition {
+                    "mesh_hold"
+                } else {
+                    "qos"
+                };
+                ledger_events.push(locked.push_event(kind, apply.message));
             }
             if let Some(error) = storage_fault {
                 locked.recording = false;
@@ -650,7 +688,103 @@ fn run_control_loop(state: Arc<RwLock<RuntimeState>>, config: Config) {
         for event in ledger_events {
             let _ = append_event(&config.event_ledger_path, &event);
         }
+
+        // Storage hygiene: every ~2 minutes, compact huge inactive raw sessions.
+        auto_compact_counter = auto_compact_counter.saturating_add(1);
+        if auto_compact_counter % 120 == 0 {
+            let active_id = state
+                .read()
+                .ok()
+                .map(|locked| locked.session_id.clone())
+                .unwrap_or_default();
+            maybe_auto_compact_sessions(&state, &config, &active_id);
+        }
         thread::sleep(interval);
+    }
+}
+
+/// Compact inactive sessions that are large enough to hurt disk/UI.
+fn maybe_auto_compact_sessions(
+    state: &Arc<RwLock<RuntimeState>>,
+    config: &Config,
+    active_session_id: &str,
+) {
+    if !config.storage.enabled {
+        return;
+    }
+    let sessions = match storage::list_sessions(&config.storage.directory) {
+        Ok(s) => s,
+        Err(_) => return,
+    };
+    let form = state
+        .read()
+        .ok()
+        .map(|locked| {
+            (
+                locked.system_profile.form_factor.as_str().to_string(),
+                locked.system_profile.known_as.clone(),
+            )
+        })
+        .unwrap_or_else(|| ("desktop".into(), "host".into()));
+    let mut freed = 0u64;
+    let mut count = 0u64;
+    for session in sessions {
+        if session.session_id == active_session_id {
+            continue;
+        }
+        // Auto-compact: >2 MB raw or >2000 samples (long idle observe dumps).
+        if session.bytes < 2 * 1024 * 1024 && session.samples < 2_000 {
+            continue;
+        }
+        let frames = match storage::read_session_frames(
+            &config.storage.directory,
+            &session.session_id,
+            config.storage.maximum_query_samples.max(10_000),
+        ) {
+            Ok(f) => f,
+            Err(_) => continue,
+        };
+        if frames.is_empty() {
+            continue;
+        }
+        let mut summary =
+            analytics::summarize_session(&session.session_id, &frames, config.analytics.epsilon);
+        let calibration =
+            futurist::calibrate_session(&session.session_id, &frames, config.analytics.epsilon);
+        summary.futurist_skill_improvement = calibration.skill.relative_improvement;
+        summary.system_form_factor = form.0.clone();
+        let points = analytics::learning_graph_points(&frames, 256);
+        let options = storage::CompactOptions {
+            system_form_factor: form.0.clone(),
+            system_known_as: form.1.clone(),
+            futurist_skill_mae_h5: calibration.skill.mae_h5,
+            futurist_skill_improvement: calibration.skill.relative_improvement,
+            futurist_beats_persist: calibration.skill.beats_persist,
+        };
+        match storage::compact_session_with_options(
+            &config.storage.directory,
+            &session.session_id,
+            summary,
+            points,
+            options,
+        ) {
+            Ok(receipt) => {
+                freed = freed.saturating_add(receipt.freed_bytes);
+                count = count.saturating_add(1);
+            }
+            Err(_) => continue,
+        }
+    }
+    if count > 0 {
+        if let Ok(mut locked) = state.write() {
+            let event = locked.push_event(
+                "session_learn",
+                format!(
+                    "Auto-compacted {count} inactive session(s); freed {freed} bytes of raw JSONL."
+                ),
+            );
+            let _ = append_event(&config.event_ledger_path, &event);
+        }
     }
 }
 

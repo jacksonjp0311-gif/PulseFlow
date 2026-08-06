@@ -182,9 +182,235 @@ pub fn apply_qos_to_pid(pid: u32, level: QosLevel) -> Result<(), String> {
     apply_platform_qos(pid, level)
 }
 
+/// One mesh target for HUD / cortex tooling.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct MeshTargetInfo {
+    pub pid: u32,
+    pub name: String,
+    pub score: f64,
+}
+
+/// Result of a mesh control step (dwell-aware, change-only logging).
+#[derive(Debug, Clone)]
+pub struct MeshApplyResult {
+    pub changed: bool,
+    pub applied: QosLevel,
+    pub targets: u32,
+    pub target_list: Vec<MeshTargetInfo>,
+    pub message: String,
+    pub heartbeat: bool,
+    pub transition: bool,
+}
+
+/// Stateful whole-system mesh controller: dwell, change detection, adaptive targeting.
+#[derive(Debug, Default)]
+pub struct MeshController {
+    applied: QosLevel,
+    last_pids: Vec<u32>,
+    last_names: Vec<String>,
+    last_change_ms: u128,
+    last_log_ms: u128,
+    last_targets: Vec<MeshTargetInfo>,
+    pub transition_count: u64,
+}
+
+impl MeshController {
+    pub fn reset(&mut self) {
+        *self = Self::default();
+    }
+
+    pub fn last_targets(&self) -> &[MeshTargetInfo] {
+        &self.last_targets
+    }
+
+    /// Adaptive target budget: more processes under RAM pressure.
+    pub fn max_targets_for_ram(ram_percent: f64) -> usize {
+        if ram_percent >= 92.0 {
+            8
+        } else if ram_percent >= 88.0 {
+            6
+        } else if ram_percent >= 84.0 {
+            5
+        } else {
+            4
+        }
+    }
+
+    /// Score floor relaxes when RAM is high so quiet boxes still get targets.
+    pub fn score_floor_for_ram(ram_percent: f64) -> f64 {
+        if ram_percent >= 90.0 {
+            45.0
+        } else if ram_percent >= 85.0 {
+            55.0
+        } else if ram_percent >= 80.0 {
+            65.0
+        } else {
+            80.0
+        }
+    }
+
+    /// Mesh RAM-first Eco threshold: slightly more aggressive than single-PID assist.
+    pub fn mesh_eco_ram_threshold(profile_eco_enter: f64) -> f64 {
+        (profile_eco_enter - 3.0).clamp(78.0, 96.0)
+    }
+
+    /// Force Eco when host RAM is the bottleneck (constrained desktop).
+    pub fn prefer_mesh_qos(
+        requested: QosLevel,
+        ram_percent: f64,
+        profile_eco_enter: f64,
+    ) -> QosLevel {
+        if matches!(requested, QosLevel::ThermalProtect) {
+            return requested;
+        }
+        if ram_percent >= Self::mesh_eco_ram_threshold(profile_eco_enter) {
+            return QosLevel::Eco;
+        }
+        requested
+    }
+
+    /// Apply mesh QoS with dwell + change-only semantics.
+    /// `dwell_ms` defaults to governor minimum dwell; heartbeat logs every `heartbeat_ms`.
+    pub fn step(
+        &mut self,
+        requested: QosLevel,
+        ram_percent: f64,
+        dwell_ms: u64,
+        heartbeat_ms: u64,
+    ) -> MeshApplyResult {
+        if !platform_governor_supported() {
+            return MeshApplyResult {
+                changed: false,
+                applied: QosLevel::MonitorOnly,
+                targets: 0,
+                target_list: Vec::new(),
+                message: "Mesh QoS requires Windows.".into(),
+                heartbeat: false,
+                transition: false,
+            };
+        }
+        if matches!(requested, QosLevel::MonitorOnly) {
+            return MeshApplyResult {
+                changed: false,
+                applied: QosLevel::MonitorOnly,
+                targets: 0,
+                target_list: Vec::new(),
+                message: "Mesh is observing only.".into(),
+                heartbeat: false,
+                transition: false,
+            };
+        }
+
+        let max_targets = Self::max_targets_for_ram(ram_percent);
+        let score_floor = Self::score_floor_for_ram(ram_percent);
+        let selected = select_mesh_targets(max_targets, score_floor);
+        let now = now_ms();
+        let pids: Vec<u32> = selected.iter().map(|t| t.0).collect();
+        let names: Vec<String> = selected.iter().map(|t| t.1.clone()).collect();
+        let target_list: Vec<MeshTargetInfo> = selected
+            .iter()
+            .map(|(pid, name, score)| MeshTargetInfo {
+                pid: *pid,
+                name: name.clone(),
+                score: *score,
+            })
+            .collect();
+
+        if selected.is_empty() {
+            let message = format!(
+                "No mesh targets above score floor {score_floor:.0} (RAM {ram_percent:.0}%)."
+            );
+            self.last_targets.clear();
+            return MeshApplyResult {
+                changed: false,
+                applied: self.applied,
+                targets: 0,
+                target_list: Vec::new(),
+                message,
+                heartbeat: false,
+                transition: false,
+            };
+        }
+
+        let set_changed = pids != self.last_pids || requested != self.applied;
+        let dwell_elapsed =
+            self.last_change_ms == 0 || now.saturating_sub(self.last_change_ms) >= dwell_ms as u128;
+        let should_apply = set_changed && dwell_elapsed;
+
+        if !should_apply {
+            let heartbeat = now.saturating_sub(self.last_log_ms) >= heartbeat_ms as u128;
+            if heartbeat {
+                self.last_log_ms = now;
+            }
+            let message = if requested != self.applied && !dwell_elapsed {
+                format!("Mesh QoS transition to {requested:?} deferred by dwell ({dwell_ms} ms).")
+            } else {
+                format!(
+                    "Mesh holding {level:?} on {} targets: {}",
+                    self.last_pids.len(),
+                    self.last_names
+                        .iter()
+                        .zip(self.last_pids.iter())
+                        .map(|(n, p)| format!("{n}#{p}"))
+                        .collect::<Vec<_>>()
+                        .join(", "),
+                    level = self.applied
+                )
+            };
+            return MeshApplyResult {
+                changed: false,
+                applied: self.applied,
+                targets: self.last_pids.len() as u32,
+                target_list: if self.last_targets.is_empty() {
+                    target_list
+                } else {
+                    self.last_targets.clone()
+                },
+                message,
+                heartbeat,
+                transition: false,
+            };
+        }
+
+        let mut ok = 0u32;
+        let mut applied_names = Vec::new();
+        for (pid, name, _) in &selected {
+            if apply_platform_qos(*pid, requested).is_ok() {
+                ok = ok.saturating_add(1);
+                applied_names.push(format!("{name}#{pid}"));
+            }
+        }
+
+        let transition = requested != self.applied || pids != self.last_pids;
+        if transition {
+            self.transition_count = self.transition_count.saturating_add(1);
+        }
+        self.applied = requested;
+        self.last_pids = pids;
+        self.last_names = names;
+        self.last_change_ms = now;
+        self.last_log_ms = now;
+        self.last_targets = target_list.clone();
+
+        MeshApplyResult {
+            changed: true,
+            applied: requested,
+            targets: ok,
+            target_list,
+            message: format!(
+                "Pulse mesh applied {requested:?} to {ok}/{} targets: {}",
+                selected.len(),
+                applied_names.join(", ")
+            ),
+            heartbeat: false,
+            transition,
+        }
+    }
+}
+
 /// Select top user processes by combined CPU+memory pressure for mesh Eco.
 /// Excludes the PulseFlow process and common critical system names.
-pub fn select_mesh_targets(max_targets: usize) -> Vec<(u32, String, f64)> {
+pub fn select_mesh_targets(max_targets: usize, score_floor: f64) -> Vec<(u32, String, f64)> {
     use sysinfo::{PidExt, ProcessExt, System, SystemExt};
     let mut system = System::new();
     system.refresh_processes();
@@ -202,6 +428,7 @@ pub fn select_mesh_targets(max_targets: usize) -> Vec<(u32, String, f64)> {
         "dwm.exe",
         "memory compression",
         "secure system",
+        "pulseflow-governor",
     ];
     let mut scored: Vec<(u32, String, f64)> = system
         .processes()
@@ -221,7 +448,7 @@ pub fn select_mesh_targets(max_targets: usize) -> Vec<(u32, String, f64)> {
             let mem_mb = process.memory() as f64 / 1024.0 / 1024.0;
             // Prefer memory hogs with some CPU activity (desktop mesh).
             let score = mem_mb * 0.65 + cpu * 8.0;
-            if score < 80.0 {
+            if score < score_floor {
                 return None;
             }
             Some((id, name, score))
@@ -232,32 +459,11 @@ pub fn select_mesh_targets(max_targets: usize) -> Vec<(u32, String, f64)> {
     scored
 }
 
-/// Apply a mesh QoS level to selected host processes. Returns applied count + note.
+/// Stateless convenience wrapper (tests / one-shot). Prefer `MeshController::step` in runtime.
 pub fn apply_mesh_qos(level: QosLevel, max_targets: usize) -> (u32, String) {
-    if !platform_governor_supported() {
-        return (0, "Mesh QoS requires Windows.".into());
-    }
-    if matches!(level, QosLevel::MonitorOnly) {
-        return (0, "Mesh is observing only.".into());
-    }
-    let targets = select_mesh_targets(max_targets);
-    if targets.is_empty() {
-        return (0, "No mesh targets above the pressure score floor.".into());
-    }
-    let mut ok = 0u32;
-    let mut names = Vec::new();
-    for (pid, name, _) in &targets {
-        if apply_platform_qos(*pid, level).is_ok() {
-            ok = ok.saturating_add(1);
-            names.push(format!("{name}#{pid}"));
-        }
-    }
-    (
-        ok,
-        format!(
-            "Pulse mesh applied {level:?} to {ok}/{} targets: {}",
-            targets.len(),
-            names.join(", ")
-        ),
-    )
+    let mut mesh = MeshController::default();
+    // Bypass dwell for one-shot by priming last_change_ms far in the past via step with empty state.
+    let result = mesh.step(level, 90.0, 0, 30_000);
+    let _ = max_targets;
+    (result.targets, result.message)
 }

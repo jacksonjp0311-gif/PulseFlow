@@ -853,6 +853,17 @@
     .pairing-actions { display:grid; grid-template-columns:1fr 1fr; gap:5px; margin-top:6px; }
     .pairing-actions .btn { min-height: 40px; font-size: 13px; letter-spacing: .07em; }
     .pairing-actions .enable { grid-column: 1 / -1; background: linear-gradient(135deg,#0fa85a,#1fd87a); color: #06140c; border-color: #0d8a4a; box-shadow: 0 0 0 2px rgba(31,216,122,.15); font-weight: 700; }
+    .mesh-protocol {
+      margin-top: 8px; padding: 8px; border: 1px dashed rgba(31,216,122,.35); border-radius: 8px;
+      font-size: 11px; letter-spacing: .04em; text-transform: none; color: var(--muted); line-height: 1.45;
+    }
+    .mesh-protocol b { color: var(--accent); }
+    .mesh-targets { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; min-height: 22px; }
+    .mesh-chip {
+      border: 1px solid rgba(31,216,122,.35); border-radius: 999px; padding: 3px 8px;
+      font-size: 11px; letter-spacing: .04em; background: rgba(31,216,122,.08); color: var(--ink);
+    }
+    .mesh-chip span { color: var(--muted); margin-left: 4px; }
     .pairing-detail { margin-top: 5px; font-size: 13px; color: var(--muted); min-height: 24px; }
     .channel-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:4px; margin-top:6px; }
     .channel-grid div { border: 1px solid var(--soft-line); padding: 7px; background: rgba(255,255,255,.04); }
@@ -1166,6 +1177,11 @@
             <div class="process-row"><select id="process-select" aria-label="Process to connect"><option value="">Discovering processes…</option></select><button class="btn" data-action="interlink-process-refresh">Discover</button></div>
             <div class="pairing-detail" id="process-detail">Choose the workload responsible for the CPU or GPU activity you want to test.</div>
             <div class="pairing-actions"><button class="btn" data-action="interlink-connect">Connect System</button><button class="btn" data-action="interlink-baseline">Capture Baseline</button><button class="btn enable" data-action="interlink-enable">Enable PulseFlow</button><button class="btn primary" data-action="interlink-mesh" title="Whole-system mesh: host pressure drives Eco on top processes. No single-app attach required.">Enable Pulse Mesh</button><button class="btn" data-action="interlink-disconnect">Disconnect</button><button class="btn" data-action="system-link-verify">Verify Link</button></div>
+            <div class="mesh-protocol" id="mesh-protocol">
+              <b>Ability protocol</b> · free plant ≥90s → <b>Pulse Mesh ≥5 min</b> (multi-app) → disconnect ≥90s → pair report.<br>
+              Mesh note: <b id="mesh-live-note">—</b> · targets <b id="mesh-live-count">0</b> · transitions <b id="mesh-live-transitions">0</b>
+            </div>
+            <div class="mesh-targets" id="mesh-target-chips" aria-label="Live mesh targets"></div>
           </div>
           <p id="interlink-detail">Waiting for a backend state attestation.</p>
           <div class="receipt-line"><span>Verification evidence</span><b id="link-receipt">NONE</b></div>
@@ -1675,8 +1691,38 @@
     setText("#channel-host", link.telemetry === "LIVE" ? "LIVE" : "ACQUIRE"); setText("#channel-process", link.processChannel); setText("#channel-agent", link.agentChannel);
     setText("#interlink-detail", link.detail); setText("#link-receipt", link.receipt);
     setText("#core-target", link.target); setText("#core-process-channel", link.processChannel); setText("#core-agent-channel", link.agentChannel);
+    renderMeshHud(status);
     applyAuthorityControls(status && status.authority_state ? status.authority_state : "observation");
     return link;
+  }
+
+  function renderMeshHud(status) {
+    if (!status) return;
+    const note = status.mesh_note || (App.interlinkReport && App.interlinkReport.mesh_note) || "—";
+    const count = status.mesh_targets != null ? status.mesh_targets
+      : (App.interlinkReport && App.interlinkReport.mesh_targets) || 0;
+    const transitions = status.mesh_transition_count != null ? status.mesh_transition_count
+      : (App.interlinkReport && App.interlinkReport.mesh_transition_count) || 0;
+    setText("#mesh-live-note", String(note).slice(0, 120) || "—");
+    setText("#mesh-live-count", String(count));
+    setText("#mesh-live-transitions", String(transitions));
+    const chips = $("#mesh-target-chips");
+    if (!chips) return;
+    const list = status.mesh_target_list
+      || (App.interlinkReport && App.interlinkReport.mesh_target_list)
+      || [];
+    if (!list.length) {
+      chips.innerHTML = status.mesh_mode
+        ? "<span class=\"mesh-chip\">Mesh armed · scanning targets…</span>"
+        : "<span class=\"mesh-chip\">Mesh idle</span>";
+      return;
+    }
+    chips.innerHTML = list.map(item => {
+      const name = escapeHtml(item.name || "proc");
+      const pid = escapeHtml(item.pid);
+      const score = Number.isFinite(Number(item.score)) ? Number(item.score).toFixed(0) : "—";
+      return `<span class="mesh-chip">${name}#${pid}<span>s${score}</span></span>`;
+    }).join("");
   }
 
   function applyAuthorityControls(state) {
@@ -2507,6 +2553,7 @@
     const features = "popup=yes,width=520,height=780,left=80,top=60,resizable=yes,scrollbars=yes";
     const win = window.open(url.toString(), "pulseflow-cortex-hud", features);
     if (!win) return toast("Pop-out blocked — allow popups for this host.", true);
+    try { localStorage.setItem("pulseflow.cortexPreferPopout", "1"); } catch (_) {}
     openCortexHud(false);
     toast("Cortex HUD opened in a separate window — drag it to another screen.");
   }
@@ -2823,9 +2870,20 @@
       openCortexHud(true);
     } else {
       let preferOpen = false;
-      try { preferOpen = localStorage.getItem("pulseflow.cortexHudOpen") === "1"; } catch (_) {}
+      let preferPopout = false;
+      try {
+        preferOpen = localStorage.getItem("pulseflow.cortexHudOpen") === "1";
+        preferPopout = localStorage.getItem("pulseflow.cortexPreferPopout") === "1";
+      } catch (_) {}
       const needKey = !(App.agentConfig && (App.agentConfig.providers || []).some(p => p.id === App.agentConfig.active_provider && p.has_key));
-      openCortexHud(preferOpen || needKey);
+      if (preferPopout && !needKey) {
+        // Re-open detached HUD when operator prefers second-screen chat.
+        setTimeout(() => {
+          try { popoutCortexHud(); } catch (_) { openCortexHud(true); }
+        }, 400);
+      } else {
+        openCortexHud(preferOpen || needKey);
+      }
     }
     await pollStatus();
     setInterval(pollStatus, 1000);

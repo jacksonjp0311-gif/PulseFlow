@@ -3,7 +3,7 @@ use crate::{
     analytics,
     authority::{transition, AuthorityAction, AuthorityState},
     config::Config,
-    futurist,
+    futurist, governor,
     model::{
         now_ms, stable_hash, EvidenceReceipt, IoSignal, LearningStage, OperatingMode, QosLevel,
         RuntimeEvent, RuntimeState, RuntimeTuning, SignalInput, TargetIdentity, TuningPatch,
@@ -344,6 +344,39 @@ fn dispatch(
             let locked = state.read().map_err(|_| "state lock poisoned")?;
             Response::json(200, &agent_chat::build_cortex_snapshot(&locked, config))
         }
+        ("GET", "/api/mesh/status") => {
+            let locked = state.read().map_err(|_| "state lock poisoned")?;
+            Response::json(
+                200,
+                &json!({
+                    "schema_version": "pulseflow.mesh-status.v1",
+                    "mesh_mode": locked.mesh_mode,
+                    "mesh_targets": locked.mesh_targets,
+                    "mesh_target_list": locked.mesh_target_list,
+                    "mesh_note": locked.mesh_note,
+                    "mesh_transition_count": locked.mesh_transition_count,
+                    "applied_qos": locked.control.applied_qos,
+                    "requested_qos": locked.control.requested_qos,
+                    "ram_percent": locked.telemetry.memory_percent,
+                    "filtered_stress": locked.control.filtered_stress,
+                    "eco_ram_enter_percent": locked.system_profile.eco_ram_enter_percent,
+                    "mesh_eco_threshold": governor::MeshController::mesh_eco_ram_threshold(
+                        locked.system_profile.eco_ram_enter_percent
+                    ),
+                    "session_id": locked.session_id,
+                    "protocol": {
+                        "baseline_seconds": 90,
+                        "mesh_seconds": 300,
+                        "steps": [
+                            "Observe free plant ≥90s (baseline)",
+                            "Enable Pulse Mesh ≥5 min (same multi-app workload)",
+                            "Disconnect → observe ≥90s",
+                            "Compare baseline vs mesh (pair report)"
+                        ]
+                    }
+                }),
+            )
+        }
         ("GET", "/api/processes") => {
             let processes = list_processes();
             if let Ok(mut locked) = state.write() {
@@ -537,6 +570,8 @@ fn dispatch(
             locked.mesh_mode = false;
             locked.mesh_note = String::new();
             locked.mesh_targets = 0;
+            locked.mesh_target_list.clear();
+            locked.mesh_transition_count = 0;
             locked.governor_active = false;
             locked.authority_state = resulting;
             locked.last_valid_authority_state = AuthorityState::Observation;
@@ -1021,18 +1056,37 @@ fn dispatch(
                 &candidate_frames,
                 config.analytics.epsilon,
             );
-            let report = analytics::compare_sessions(baseline, candidate);
+            let report = analytics::compare_sessions(baseline.clone(), candidate.clone());
+            let pair = json!({
+                "schema_version": "pulseflow.mesh-pair-report.v1",
+                "baseline_session_id": input.baseline_session_id,
+                "candidate_session_id": input.candidate_session_id,
+                "delta_ram_mean": candidate.ram_pressure_mean - baseline.ram_pressure_mean,
+                "delta_stress_mean": candidate.average_stress - baseline.average_stress,
+                "delta_coherence": candidate.oscillation_coherence.unwrap_or(0.0)
+                    - baseline.oscillation_coherence.unwrap_or(0.0),
+                "delta_stability": candidate.flow_stability - baseline.flow_stability,
+                "baseline_eco_duty": baseline.eco_duty_cycle,
+                "candidate_eco_duty": candidate.eco_duty_cycle,
+                "baseline_gov_duty": baseline.governor_active_duty,
+                "candidate_gov_duty": candidate.governor_active_duty,
+                "baseline_ram_mean": baseline.ram_pressure_mean,
+                "candidate_ram_mean": candidate.ram_pressure_mean,
+                "baseline_samples": baseline.samples,
+                "candidate_samples": candidate.samples,
+                "comparison": report,
+            });
             if let Ok(mut locked) = state.write() {
                 let event = locked.push_event(
                     "comparison",
                     format!(
-                        "Compared baseline {} with candidate {}.",
+                        "Compared baseline {} with candidate {} (mesh pair report).",
                         input.baseline_session_id, input.candidate_session_id
                     ),
                 );
                 persist_event(config, &event);
             }
-            Response::json(200, &report)
+            Response::json(200, &pair)
         }
         ("GET", "/health") => Ok(Response {
             status: 200,
@@ -1274,6 +1328,8 @@ fn interlink_report(state: &RuntimeState) -> serde_json::Value {
         "mesh_mode": state.mesh_mode,
         "mesh_targets": state.mesh_targets,
         "mesh_note": state.mesh_note,
+        "mesh_target_list": state.mesh_target_list,
+        "mesh_transition_count": state.mesh_transition_count,
         "requested_qos": state.control.requested_qos,
         "applied_qos": state.control.applied_qos,
         "process_qos_active": process_qos_active,

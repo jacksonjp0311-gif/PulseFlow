@@ -17,6 +17,8 @@ Before broad repository reading, planning, editing, or code generation:
 5. Treat repository source, tests, compiler output, and current runtime evidence as more authoritative than summaries.
 6. Record decisions, discoveries, invariants, failures, fixes, and outcomes with the wrapper's `remember` command.
 7. Run `consolidate` at task completion to create a provenance-bearing Discovery Card.
+8. Prefer `ritual` to close activate→remember→consolidate in one step.
+9. Obey packet `agent_protocol` and governor mode (`read_only` = no host edits).
 
 ### Authority boundary
 
@@ -29,6 +31,7 @@ Cortex provides memory, relationships, telemetry, sparse activation, and evidenc
 .\.cortex\bin\cortex.ps1 query -Query "<narrow question>"
 .\.cortex\bin\cortex.ps1 remember -Kind decision -Text "<decision>"
 .\.cortex\bin\cortex.ps1 consolidate
+.\.cortex\bin\cortex.ps1 ritual -Task "<task>" -Text "<durable fact>"
 ```
 
 ```bash
@@ -36,5 +39,6 @@ Cortex provides memory, relationships, telemetry, sparse activation, and evidenc
 ./.cortex/bin/cortex.sh query --query "<narrow question>"
 ./.cortex/bin/cortex.sh remember --kind decision --text "<decision>"
 ./.cortex/bin/cortex.sh consolidate
+./.cortex/bin/cortex.sh ritual --task "<task>" --text "<durable fact>"
 ```
 <!-- CORTEX:MANAGED:END -->

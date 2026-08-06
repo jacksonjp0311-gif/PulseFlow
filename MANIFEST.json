@@ -284,13 +284,13 @@
                   },
                   {
                       "path":  "schemas/pulseflow-api.contract.json",
-                      "bytes":  7031,
-                      "sha256":  "b19c9ddb659a4346dc28aae74650f7b052f01fbcec04a57fe9759035734ba735"
+                      "bytes":  7204,
+                      "sha256":  "60a203e8af4deedf6ead3e33bcd42cfc89c26a17cd0911d4af07ea5e1f57258e"
                   },
                   {
                       "path":  "schemas/ui-actions.json",
-                      "bytes":  6008,
-                      "sha256":  "860189ac07a77c9cb9c7e9aae39f549880f2abc540941cee5d3c29d7bf024d88"
+                      "bytes":  6107,
+                      "sha256":  "9bc3934cc372ba7183748b6a431ddae94060ee337b73332ca173ebda177838cf"
                   },
                   {
                       "path":  "scripts/ARIA-Handshake.ps1",
@@ -334,8 +334,8 @@
                   },
                   {
                       "path":  "src/agent_chat.rs",
-                      "bytes":  47843,
-                      "sha256":  "9f93aa2e8dbc7e7d7c2b14580da7ad471aa0b848d026f121711bb7941ca103c4"
+                      "bytes":  55667,
+                      "sha256":  "e8c6af29f06996c9e25c35a49aa30bf8fd5f24fdee4550f4f7dbe819444eef62"
                   },
                   {
                       "path":  "src/analytics.rs",
@@ -364,8 +364,8 @@
                   },
                   {
                       "path":  "src/governor.rs",
-                      "bytes":  8485,
-                      "sha256":  "001cae47bd818836adf532095384fd04702c22779fb5e8aa22e68dfca4ad3672"
+                      "bytes":  15348,
+                      "sha256":  "6634793ddba3d6e7d17c78bac00a01ecca0c78b27bd89378d32df1fa96ffbeff"
                   },
                   {
                       "path":  "src/lib.rs",
@@ -374,13 +374,13 @@
                   },
                   {
                       "path":  "src/main.rs",
-                      "bytes":  28690,
-                      "sha256":  "e44230760c26cf84c601876817d7da66d3a2f59541257e487a0fcfbbda7d362b"
+                      "bytes":  33562,
+                      "sha256":  "2a50483a3be91b017c880e8f63934b1d3e12ce48b1e8f32a3752b790de6707d1"
                   },
                   {
                       "path":  "src/model.rs",
-                      "bytes":  41741,
-                      "sha256":  "5889c95d3364296e7bdaf0d9d17908324fdf6612cf196ce624195e30fd2c0105"
+                      "bytes":  42105,
+                      "sha256":  "58e0fce43416f3faf11ab0480817a3860173bc9c254c42e9be405a933c21c11e"
                   },
                   {
                       "path":  "src/policy.rs",
@@ -399,8 +399,8 @@
                   },
                   {
                       "path":  "src/server.rs",
-                      "bytes":  58769,
-                      "sha256":  "0ff92480a6c4376718c3241bdd162c8e8f3f97493dbaf91c3b55dc8361bc9548"
+                      "bytes":  61914,
+                      "sha256":  "632d96b6109006f50acdc73043c6869923fff8169659e7fae6d2819e299e0ea8"
                   },
                   {
                       "path":  "src/storage.rs",
@@ -464,8 +464,8 @@
                   },
                   {
                       "path":  "web/index.html",
-                      "bytes":  190259,
-                      "sha256":  "3120c9a71c17bacacfc621bc535b3d291a6b9b31b2131df18084685760ccc622"
+                      "bytes":  193274,
+                      "sha256":  "3adf057d37a666335ececacce2b8543700e92e45fde6e4b7a3371fcef82c3a84"
                   }
               ]
 }

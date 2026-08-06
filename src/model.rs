@@ -834,6 +834,12 @@ pub struct RuntimeState {
     pub mesh_note: String,
     #[serde(default)]
     pub mesh_targets: u32,
+    /// Live mesh target chips for HUD / Cortex (pid, name, score).
+    #[serde(default)]
+    pub mesh_target_list: Vec<crate::governor::MeshTargetInfo>,
+    /// Mesh QoS level/target-set transitions in this process lifetime.
+    #[serde(default)]
+    pub mesh_transition_count: u64,
     pub recording: bool,
     pub experiment_id: String,
     pub epoch_revision: u64,
@@ -909,6 +915,8 @@ impl RuntimeState {
             mesh_mode: false,
             mesh_note: String::new(),
             mesh_targets: 0,
+            mesh_target_list: Vec::new(),
+            mesh_transition_count: 0,
             recording: true,
             experiment_id,
             epoch_revision: 1,
